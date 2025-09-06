@@ -7,6 +7,7 @@ type GameContextType = {
   board: number[][];
   score: number;
   bestScore: number;
+  bestTile: number;
   theme: string;
   newGame: () => void;
   move: (direction: "up" | "down" | "left" | "right") => void;
@@ -25,12 +26,16 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
   const [board, setBoard] = useState<number[][]>(initBoard());
   const [score, setScore] = useState(0);
   const [bestScore, setBestScore] = useState(0);
+  const [bestTile, setBestTile] = useState(0); // New state to track the highest tile
   const [theme, setTheme] = useState("fruits");
 
   useEffect(() => {
     (async () => {
-      const storedBest = await AsyncStorage.getItem("bestScore");
-      if (storedBest) setBestScore(Number(storedBest));
+      const storedBestScore = await AsyncStorage.getItem("bestScore");
+      if (storedBestScore) setBestScore(Number(storedBestScore));
+
+      const storedBestTile = await AsyncStorage.getItem("bestTile");
+      if (storedBestTile) setBestTile(Number(storedBestTile));
     })();
   }, []);
 
@@ -45,16 +50,24 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
       const newScore = score + gained;
       setBoard(newBoard);
       setScore(newScore);
+
       if (newScore > bestScore) {
         setBestScore(newScore);
         AsyncStorage.setItem("bestScore", String(newScore));
+      }
+
+      // Update bestTile
+      const maxTileValue = Math.max(...newBoard.flat());
+      if (maxTileValue > bestTile) {
+        setBestTile(maxTileValue);
+        AsyncStorage.setItem("bestTile", String(maxTileValue));
       }
     }
   };
 
   return (
     <GameContext.Provider
-      value={{ board, score, bestScore, theme, newGame, move, setTheme }}
+      value={{ board, score, bestScore, bestTile, theme, newGame, move, setTheme }}
     >
       {children}
     </GameContext.Provider>

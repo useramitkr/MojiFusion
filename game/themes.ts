@@ -24,6 +24,6 @@ export const themes: Record<string, Record<number, string>> = {
     256: "🤩",
     512: "😎",
     1024: "🤯",
-    2048: "👑",
+    2048: "👑", // Use crown for the highest value
   },
 };

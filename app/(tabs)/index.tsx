@@ -1,19 +1,17 @@
-import Board from "@/components/GameUI/Board";
-import Controls from "@/components/GameUI/Controls";
 import Header from "@/components/GameUI/Header";
 import React from "react";
 import { View, StyleSheet } from "react-native";
+import SwipeableBoard from "@/components/GameUI/SwipeableBoard";
 
 export default function HomeScreen() {
   return (
     <View style={styles.container}>
       <Header />
-      <Board />
-      <Controls />
+      <SwipeableBoard />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: "center", backgroundColor: "#fff" },
+  container: { flex: 1, alignItems: "center", backgroundColor: "#fbf8ef" },
 });
