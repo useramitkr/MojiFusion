@@ -1,3 +1,4 @@
+// file: app/(tabs)/themes.tsx
 import { useGame } from "@/context/GameContext";
 import React from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
@@ -106,7 +107,7 @@ const THEME_DATA: ThemeData[] = [
 
 const CATEGORIES = ["Nature", "Animals", "Human", "Activities", "Fantasy", "Transport"];
 
-export default function Dashboard() {
+export default function ThemesScreen() {
   const { theme, setTheme, score } = useGame();
 
   const getThemesByCategory = (category: string) => {
