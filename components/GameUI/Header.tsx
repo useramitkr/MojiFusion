@@ -1,10 +1,11 @@
+// file: components/GameUI/Header.tsx
 import { useGame } from "@/context/GameContext";
 import { themes } from "@/game/themes";
 import React, { useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Modal } from "react-native";
 
 export default function Header() {
-  const { score, bestScore, bestTile, newGame, theme, switcherCount, soundEnabled, toggleSound } = useGame();
+  const { score, bestScore, bestTile, newGame, theme, switcherCount, soundEnabled, toggleSound, useSwitcher } = useGame();
   const [showInstructions, setShowInstructions] = useState(false);
   
   const bestTileEmoji = themes[theme][bestTile] || "❓";
@@ -49,7 +50,11 @@ export default function Header() {
 
         {/* Action Row */}
         <View style={styles.actionRow}>
-          <TouchableOpacity style={[styles.actionBtn, switcherCount > 0 && styles.activeBtn]}>
+          <TouchableOpacity
+            style={[styles.actionBtn, switcherCount > 0 && styles.activeBtn]}
+            onPress={useSwitcher}
+            disabled={switcherCount <= 0}
+          >
             <Text style={styles.actionText}>🔄 {switcherCount}</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={newGame} style={styles.newGameBtn}>
@@ -97,7 +102,7 @@ export default function Header() {
             
             <View style={styles.instructionItem}>
               <Text style={styles.instructionIcon}>🔄</Text>
-              <Text style={styles.instructionText}>Long press tiles to switch (earn switchers every 1000 points)</Text>
+              <Text style={styles.instructionText}>Click the switcher to clear half the board and reset the rest to the starting tile.</Text>
             </View>
             
             <View style={styles.instructionItem}>
@@ -247,7 +252,6 @@ const styles = StyleSheet.create({
     padding: 24,
     margin: 20,
     elevation: 10,
-    width: "85%",
   },
   modalTitle: {
     fontSize: 24,

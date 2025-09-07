@@ -1,3 +1,4 @@
+// file: context/GameContext.tsx
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Audio } from 'expo-av';
@@ -18,6 +19,7 @@ type GameContextType = {
   switchTile: (row: number, col: number, newValue: number) => void;
   toggleSound: () => void;
   playSound: (type: 'move' | 'merge' | 'switch' | 'success' | 'unlock') => void;
+  useSwitcher: () => void;
 };
 
 const GameContext = createContext<GameContextType | null>(null);
@@ -260,6 +262,57 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [board, switcherCount, playSound]);
 
+  const useSwitcher = useCallback(() => {
+    if (switcherCount <= 0) {
+      console.log("No switchers available.");
+      return;
+    }
+  
+    console.log("Using switcher to reset half the board.");
+    
+    try {
+      const newBoard = [...board].map(row => [...row]);
+      const occupiedTiles = [];
+      for (let i = 0; i < newBoard.length; i++) {
+        for (let j = 0; j < newBoard[i].length; j++) {
+          if (newBoard[i][j] !== 0) {
+            occupiedTiles.push({ row: i, col: j });
+          }
+        }
+      }
+  
+      if (occupiedTiles.length === 0) {
+        console.log("No occupied tiles to switch.");
+        return;
+      }
+  
+      // Shuffle the array of occupied tiles and clear the first half
+      const shuffledTiles = occupiedTiles.sort(() => 0.5 - Math.random());
+      const tilesToClear = Math.ceil(shuffledTiles.length / 2);
+  
+      for (let i = 0; i < shuffledTiles.length; i++) {
+        const { row, col } = shuffledTiles[i];
+        if (i < tilesToClear) {
+          newBoard[row][col] = 0; // Clear half the tiles
+        } else {
+          newBoard[row][col] = 2; // Set the other half to a new value
+        }
+      }
+  
+      setBoard(newBoard);
+      setSwitcherCount(prev => {
+        const newCount = Math.max(0, prev - 1);
+        AsyncStorage.setItem("switcherCount", String(newCount));
+        return newCount;
+      });
+      
+      playSound('switch');
+      console.log("Switcher used successfully!");
+    } catch (error) {
+      console.error("Error using switcher:", error);
+    }
+  }, [board, switcherCount, playSound]);
+
   const handleSetTheme = useCallback((newTheme: string) => {
     if (typeof newTheme === 'string' && newTheme.trim().length > 0) {
       setTheme(newTheme);
@@ -284,6 +337,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
         switchTile,
         toggleSound,
         playSound,
+        useSwitcher,
       }}
     >
       {children}
