@@ -108,24 +108,24 @@ const THEME_DATA: ThemeData[] = [
 const CATEGORIES = ["Nature", "Animals", "Human", "Activities", "Fantasy", "Transport"];
 
 export default function ThemesScreen() {
-  const { theme, setTheme, score } = useGame();
+  const { theme, setTheme, bestScore } = useGame();
 
   const getThemesByCategory = (category: string) => {
     return THEME_DATA.filter(t => t.category === category);
   };
 
   const isThemeUnlocked = (requiredScore: number) => {
-    return score >= requiredScore;
+    return bestScore >= requiredScore;
   };
 
   const getProgressToNextTheme = () => {
     const nextTheme = THEME_DATA
-      .filter(t => t.requiredScore > score)
+      .filter(t => t.requiredScore > bestScore)
       .sort((a, b) => a.requiredScore - b.requiredScore)[0];
     
     if (!nextTheme) return null;
     
-    const pointsNeeded = nextTheme.requiredScore - score;
+    const pointsNeeded = nextTheme.requiredScore - bestScore;
     return { theme: nextTheme, pointsNeeded };
   };
 
@@ -135,7 +135,7 @@ export default function ThemesScreen() {
     <ThemedView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>🎨 Theme Gallery</Text>
-        <Text style={styles.subtitle}>Current Score: {score.toLocaleString()} points</Text>
+        <Text style={styles.subtitle}>Best Score: {bestScore.toLocaleString()} points</Text>
         
         {nextThemeProgress && (
           <View style={styles.progressCard}>
@@ -149,7 +149,7 @@ export default function ThemesScreen() {
               <View 
                 style={[
                   styles.progressFill, 
-                  { width: `${((score / nextThemeProgress.theme.requiredScore) * 100)}%` }
+                  { width: `${((bestScore / nextThemeProgress.theme.requiredScore) * 100)}%` }
                 ]} 
               />
             </View>
