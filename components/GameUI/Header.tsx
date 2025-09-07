@@ -15,7 +15,7 @@ export default function Header() {
       <View style={styles.header}>
         {/* Top Row - Title and Controls */}
         <View style={styles.topRow}>
-          <Text style={styles.title}>🍎 Fruit Fusion</Text>
+          <Text style={styles.title}>MojiFusion</Text>
           <View style={styles.controls}>
             <TouchableOpacity 
               style={styles.controlBtn}
@@ -55,10 +55,10 @@ export default function Header() {
             onPress={useSwitcher}
             disabled={switcherCount <= 0}
           >
-            <Text style={styles.actionText}>🔄 {switcherCount}</Text>
+            <Text style={styles.actionText}>⏳ {switcherCount}</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={newGame} style={styles.newGameBtn}>
-            <Text style={styles.newGameText}>🎲 New Game</Text>
+            <Text style={styles.newGameText}>🐰 New Game</Text>
           </TouchableOpacity>
         </View>
 
@@ -207,7 +207,7 @@ const styles = StyleSheet.create({
   actionText: {
     fontSize: 14,
     fontWeight: "bold",
-    color: "#333",
+    color: "#ffffffff",
   },
   newGameBtn: {
     flex: 2,
@@ -252,6 +252,7 @@ const styles = StyleSheet.create({
     padding: 24,
     margin: 20,
     elevation: 10,
+    width: "85%",
   },
   modalTitle: {
     fontSize: 24,
