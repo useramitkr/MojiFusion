@@ -247,6 +247,7 @@ const styles = StyleSheet.create({
     padding: 24,
     margin: 20,
     elevation: 10,
+    width: "85%",
   },
   modalTitle: {
     fontSize: 24,
