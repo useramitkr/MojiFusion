@@ -2,7 +2,7 @@
 import { useGame } from "@/context/GameContext";
 import { themes } from "@/game/themes";
 import React, { useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Modal, ScrollView, Dimensions, Vibration } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from "react-native";
 
 type Props = { 
   value: number;

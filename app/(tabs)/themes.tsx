@@ -3,6 +3,7 @@ import { useGame } from "@/context/GameContext";
 import React from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
 import { ThemedView } from "@/components/ThemedView";
+import Legal from "@/components/GameUI/legal";
 
 type ThemeData = {
   id: string;
@@ -155,6 +156,7 @@ export default function ThemesScreen() {
             </View>
           </View>
         )}
+        <Legal />
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
