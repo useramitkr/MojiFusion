@@ -13,12 +13,12 @@ export default function Tile({ value }: Props) {
     return <View style={styles.empty} />;
   }
 
-  const emoji = themes[theme][value];
+  const emoji = themes[theme][value] || value;
   const tileColor = TILE_COLORS[`tile${value}` as keyof typeof TILE_COLORS] || TILE_COLORS.background;
 
   return (
     <View style={[styles.tile, { backgroundColor: tileColor }]}>
-      <Text style={styles.text}>{emoji || value}</Text>
+      <Text style={styles.text}>{emoji}</Text>
     </View>
   );
 }
@@ -36,14 +36,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 8,
-    elevation: 3,
+    elevation: 4, // Increased elevation for a more pronounced shadow
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
   },
   text: { 
-    fontSize: 28,
+    fontSize: 40, // Increased font size for larger emojis
     fontWeight: 'bold',
   },
 });
