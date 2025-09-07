@@ -1,7 +1,8 @@
 {
   "expo": {
-    "name": "MojoFusion",
-    "slug": "MojoFusion",
+    "name": "MojiFusion - The Emoji Puzzle Game",
+    "slug": "mojofusion",
+    "owner": "amekr",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -9,13 +10,15 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.mojofusion.app"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+      "package": "com.mojofusion.app",
       "edgeToEdgeEnabled": true
     },
     "web": {
@@ -39,7 +42,9 @@
       "typedRoutes": true
     },
     "extra": {
-      "router": {},
+      "router": {
+        "origin": false
+      },
       "eas": {
         "projectId": "cfe1b799-506c-4596-8eb6-b91bcd9fa236"
       }
