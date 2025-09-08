@@ -1,8 +1,15 @@
-// file: components/GameUI/getTileStyle.tsx
-import { useGame } from "@/context/GameContext";
+// Enhanced Tile.tsx with animations and special tiles
+import { useGame, SPECIAL_TILES } from "@/context/GameContext";
 import { themes } from "@/game/themes";
-import React, { useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from "react-native";
+import React, { useState, useEffect, useRef } from "react";
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TouchableOpacity, 
+  Dimensions, 
+  Animated 
+} from "react-native";
 
 type Props = { 
   value: number;
@@ -13,8 +20,20 @@ type Props = {
 const { width } = Dimensions.get('window');
 const TILE_SIZE = (width * 0.9) / 4 - 8;
 
-// Bright, kid-friendly colors
+// Enhanced tile styling with special tile support
 const getTileStyle = (value: number) => {
+  // Special tiles
+  if (value === SPECIAL_TILES.BOMB) {
+    return { bg: '#FF4444', border: '#CC0000', emoji: true, special: 'bomb' };
+  }
+  if (value === SPECIAL_TILES.COIN) {
+    return { bg: '#FFD700', border: '#FFA500', emoji: true, special: 'coin' };
+  }
+  if (value === SPECIAL_TILES.REWARD) {
+    return { bg: '#9C27B0', border: '#7B1FA2', emoji: true, special: 'reward' };
+  }
+
+  // Regular tiles
   const styles = {
     2: { bg: '#FFE4E1', border: '#FFB6C1', emoji: true },
     4: { bg: '#FFFACD', border: '#FFD700', emoji: true },
@@ -32,41 +51,200 @@ const getTileStyle = (value: number) => {
   return styles[value as keyof typeof styles] || { bg: '#F5F5DC', border: '#D3D3D3', emoji: false };
 };
 
+// Get special tile emoji
+const getSpecialEmoji = (value: number) => {
+  switch (value) {
+    case SPECIAL_TILES.BOMB: return '💣';
+    case SPECIAL_TILES.COIN: return '🪙';
+    case SPECIAL_TILES.REWARD: return '🎁';
+    default: return '';
+  }
+};
+
 export default function Tile({ value, row, col }: Props) {
   const { theme, switchTile, switcherCount, playSound } = useGame();
   const [isPressed, setIsPressed] = useState(false);
   
+  // Animation values
+  const scaleValue = useRef(new Animated.Value(1)).current;
+  const rotateValue = useRef(new Animated.Value(0)).current;
+  const pulseValue = useRef(new Animated.Value(1)).current;
+  const bubbleScale = useRef(new Animated.Value(0)).current;
+  const [showBubble, setShowBubble] = useState(false);
+
+  // Entrance animation for new tiles
+  useEffect(() => {
+    if (value !== 0) {
+      scaleValue.setValue(0.8);
+      Animated.spring(scaleValue, {
+        toValue: 1,
+        useNativeDriver: true,
+        tension: 100,
+        friction: 8,
+      }).start();
+    }
+  }, [value, scaleValue]);
+
+  // Pulsing animation for special tiles
+  useEffect(() => {
+    if (value < 0) { // Special tiles have negative values
+      const pulse = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseValue, {
+            toValue: 1.1,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseValue, {
+            toValue: 1,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      pulse.start();
+      
+      return () => pulse.stop();
+    }
+  }, [value, pulseValue]);
+
+  // Merge animation (bubble effect)
+  const triggerMergeAnimation = () => {
+    setShowBubble(true);
+    
+    // Scale up bubble
+    Animated.sequence([
+      Animated.timing(bubbleScale, {
+        toValue: 1.5,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(bubbleScale, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setShowBubble(false);
+    });
+
+    // Rotate tile
+    Animated.sequence([
+      Animated.timing(rotateValue, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(rotateValue, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  // Trigger merge animation when value increases significantly
+  const previousValue = useRef(value);
+  useEffect(() => {
+    if (value > previousValue.current && previousValue.current > 0) {
+      triggerMergeAnimation();
+    }
+    previousValue.current = value;
+  }, [value]);
+
   if (value === 0) {
     return <View style={styles.empty} />;
   }
 
-  const emoji = themes[theme][value] || value;
   const tileStyle = getTileStyle(value);
+  const isSpecialTile = value < 0;
+  const emoji = isSpecialTile ? getSpecialEmoji(value) : (themes[theme][value] || value);
+
+  const rotateInterpolate = rotateValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
 
   return (
     <TouchableOpacity
-      onPressIn={() => setIsPressed(true)}
-      onPressOut={() => setIsPressed(false)}
+      onPressIn={() => {
+        setIsPressed(true);
+        Animated.spring(scaleValue, {
+          toValue: 0.95,
+          useNativeDriver: true,
+          tension: 200,
+          friction: 10,
+        }).start();
+      }}
+      onPressOut={() => {
+        setIsPressed(false);
+        Animated.spring(scaleValue, {
+          toValue: 1,
+          useNativeDriver: true,
+          tension: 200,
+          friction: 10,
+        }).start();
+      }}
       style={[
         styles.tileContainer,
         {
           backgroundColor: tileStyle.bg,
           borderColor: tileStyle.border,
-          transform: [{ scale: isPressed ? 0.95 : 1 }],
         }
       ]}
       activeOpacity={0.8}
     >
-      <Text style={[styles.text, { fontSize: value >= 128 ? 28 : 36 }]}>
-        {emoji}
-      </Text>
-      
-      {/* Sparkle effect for higher values */}
-      {value >= 256 && (
-        <View style={styles.sparkleContainer}>
-          <Text style={styles.sparkle}>笨ｨ</Text>
-        </View>
-      )}
+      <Animated.View
+        style={[
+          styles.tileContent,
+          {
+            transform: [
+              { scale: Animated.multiply(scaleValue, pulseValue) },
+              { rotate: rotateInterpolate },
+            ],
+          },
+        ]}
+      >
+        <Text style={[
+          styles.text, 
+          { 
+            fontSize: value >= 128 ? 28 : 36,
+            textShadowColor: isSpecialTile ? 'rgba(255, 255, 255, 0.9)' : 'rgba(255, 255, 255, 0.8)',
+          }
+        ]}>
+          {emoji}
+        </Text>
+        
+        {/* Special tile indicators */}
+        {isSpecialTile && (
+          <View style={styles.specialIndicator}>
+            <Text style={styles.specialText}>✨</Text>
+          </View>
+        )}
+        
+        {/* Sparkle effect for higher values */}
+        {value >= 256 && !isSpecialTile && (
+          <View style={styles.sparkleContainer}>
+            <Text style={styles.sparkle}>✨</Text>
+          </View>
+        )}
+
+        {/* Bubble animation overlay */}
+        {showBubble && (
+          <Animated.View
+            style={[
+              styles.bubbleOverlay,
+              {
+                transform: [{ scale: bubbleScale }],
+              },
+            ]}
+          >
+            <View style={styles.bubble} />
+            <View style={[styles.bubble, styles.bubble2]} />
+            <View style={[styles.bubble, styles.bubble3]} />
+          </Animated.View>
+        )}
+      </Animated.View>
     </TouchableOpacity>
   );
 }
@@ -95,23 +273,29 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 6,
     position: 'relative',
+    overflow: 'hidden',
+  },
+  tileContent: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   text: {
     fontWeight: 'bold',
-    textShadowColor: 'rgba(255, 255, 255, 0.8)',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
   },
-  switcherHint: {
+  specialIndicator: {
     position: 'absolute',
     top: 2,
     right: 2,
-    backgroundColor: 'rgba(76, 175, 80, 0.9)',
-    borderRadius: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 8,
     paddingHorizontal: 4,
     paddingVertical: 2,
   },
-  hintText: {
+  specialText: {
     fontSize: 10,
   },
   sparkleContainer: {
@@ -122,74 +306,37 @@ const styles = StyleSheet.create({
   sparkle: {
     fontSize: 12,
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+  bubbleOverlay: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
     justifyContent: 'center',
-    alignItems: 'center',
+    pointerEvents: 'none',
   },
-  switcherModal: {
-    backgroundColor: 'white',
-    borderRadius: 24,
-    padding: 24,
-    margin: 20,
-    maxWidth: width * 0.9,
-    elevation: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 15,
+  bubble: {
+    position: 'absolute',
+    width: 20,
+    height: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.9)',
   },
-  modalTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 8,
-    color: '#FF6B35',
+  bubble2: {
+    width: 15,
+    height: 15,
+    borderRadius: 7.5,
+    top: -10,
+    left: -15,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
   },
-  modalSubtitle: {
-    fontSize: 16,
-    textAlign: 'center',
-    marginBottom: 20,
-    color: '#4CAF50',
-    fontWeight: '600',
-  },
-  emojiList: {
-    flexDirection: 'row',
-    paddingHorizontal: 10,
-  },
-  emojiOption: {
-    alignItems: 'center',
-    padding: 12,
-    marginHorizontal: 6,
-    borderRadius: 16,
-    borderWidth: 2,
-    minWidth: 70,
-  },
-  currentEmoji: {
-    borderWidth: 4,
-    borderColor: '#FF6B35',
-    transform: [{ scale: 1.1 }],
-  },
-  emojiText: {
-    fontSize: 32,
-    marginBottom: 4,
-  },
-  emojiLabel: {
-    fontSize: 12,
-    color: '#666',
-    fontWeight: 'bold',
-  },
-  cancelBtn: {
-    backgroundColor: '#f0f0f0',
-    paddingVertical: 12,
-    borderRadius: 12,
-    marginTop: 16,
-  },
-  cancelText: {
-    textAlign: 'center',
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#666',
+  bubble3: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    top: 10,
+    right: -10,
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
   },
 });

@@ -1,14 +1,119 @@
-// file: components/GameUI/Header.tsx
+// Enhanced Header.tsx with reward animations
 import { useGame } from "@/context/GameContext";
 import { themes } from "@/game/themes";
-import React, { useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Modal } from "react-native";
+import React, { useState, useEffect, useRef } from "react";
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TouchableOpacity, 
+  Modal, 
+  Animated,
+  Dimensions 
+} from "react-native";
+
+const { width } = Dimensions.get('window');
 
 export default function Header() {
-  const { score, bestScore, bestTile, newGame, theme, switcherCount, soundEnabled, toggleSound, useSwitcher } = useGame();
+  const { 
+    score, 
+    bestScore, 
+    bestTile, 
+    newGame, 
+    theme, 
+    switcherCount, 
+    coins,
+    soundEnabled, 
+    toggleSound, 
+    useSwitcher 
+  } = useGame();
+  
   const [showInstructions, setShowInstructions] = useState(false);
+  const [showRewardAnimation, setShowRewardAnimation] = useState(false);
+  const [lastSwitcherCount, setLastSwitcherCount] = useState(switcherCount);
   
   const bestTileEmoji = themes[theme][bestTile] || "❓";
+  
+  // Animation values for rewards
+  const rewardScale = useRef(new Animated.Value(0)).current;
+  const rewardOpacity = useRef(new Animated.Value(0)).current;
+  const switcherBounce = useRef(new Animated.Value(1)).current;
+  const coinPulse = useRef(new Animated.Value(1)).current;
+
+  // Reward notification animation
+  useEffect(() => {
+    if (switcherCount > lastSwitcherCount) {
+      setShowRewardAnimation(true);
+      
+      // Animate reward notification
+      Animated.sequence([
+        Animated.parallel([
+          Animated.timing(rewardScale, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          Animated.timing(rewardOpacity, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.delay(2000),
+        Animated.parallel([
+          Animated.timing(rewardScale, {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          Animated.timing(rewardOpacity, {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+        ]),
+      ]).start(() => {
+        setShowRewardAnimation(false);
+      });
+
+      // Animate switcher button
+      Animated.sequence([
+        Animated.timing(switcherBounce, {
+          toValue: 1.3,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(switcherBounce, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
+      setLastSwitcherCount(switcherCount);
+    }
+  }, [switcherCount, lastSwitcherCount]);
+
+  // Coin pulse animation
+  useEffect(() => {
+    const pulseAnimation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(coinPulse, {
+          toValue: 1.1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(coinPulse, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    pulseAnimation.start();
+    
+    return () => pulseAnimation.stop();
+  }, []);
 
   return (
     <>
@@ -42,6 +147,18 @@ export default function Header() {
             <Text style={styles.statLabel}>Best</Text>
             <Text style={styles.statValue}>{bestScore.toLocaleString()}</Text>
           </View>
+          <Animated.View 
+            style={[
+              styles.statBox,
+              { transform: [{ scale: coinPulse }] }
+            ]}
+          >
+            <Text style={styles.statLabel}>Coins</Text>
+            <View style={styles.coinDisplay}>
+              <Text style={styles.coinEmoji}>🪙</Text>
+              <Text style={styles.statValue}>{coins}</Text>
+            </View>
+          </Animated.View>
           <View style={styles.statBox}>
             <Text style={styles.statLabel}>Best Item</Text>
             <Text style={styles.statEmoji}>{bestTileEmoji}</Text>
@@ -50,13 +167,21 @@ export default function Header() {
 
         {/* Action Row */}
         <View style={styles.actionRow}>
-          <TouchableOpacity
-            style={[styles.actionBtn, switcherCount > 0 && styles.activeBtn]}
-            onPress={useSwitcher}
-            disabled={switcherCount <= 0}
+          <Animated.View
+            style={[
+              styles.switcherContainer,
+              { transform: [{ scale: switcherBounce }] }
+            ]}
           >
-            <Text style={styles.actionText}>⏳ {switcherCount}</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionBtn, switcherCount > 0 && styles.activeBtn]}
+              onPress={useSwitcher}
+              disabled={switcherCount <= 0}
+            >
+              <Text style={styles.actionText}>⏳ {switcherCount}</Text>
+            </TouchableOpacity>
+          </Animated.View>
+          
           <TouchableOpacity onPress={newGame} style={styles.newGameBtn}>
             <Text style={styles.newGameText}>🐰 New Game</Text>
           </TouchableOpacity>
@@ -73,6 +198,25 @@ export default function Header() {
             />
           </View>
         </View>
+
+        {/* Reward Animation Overlay */}
+        {showRewardAnimation && (
+          <Animated.View
+            style={[
+              styles.rewardOverlay,
+              {
+                opacity: rewardOpacity,
+                transform: [{ scale: rewardScale }],
+              },
+            ]}
+          >
+            <View style={styles.rewardNotification}>
+              <Text style={styles.rewardEmoji}>🎉</Text>
+              <Text style={styles.rewardText}>Switcher Earned!</Text>
+              <Text style={styles.rewardSubtext}>+1 Switcher Power-up</Text>
+            </View>
+          </Animated.View>
+        )}
       </View>
 
       {/* Instructions Modal */}
@@ -99,10 +243,20 @@ export default function Header() {
               <Text style={styles.instructionIcon}>🍎 + 🍎 = 🍌</Text>
               <Text style={styles.instructionText}>Merge same items to evolve</Text>
             </View>
+
+            <View style={styles.instructionItem}>
+              <Text style={styles.instructionIcon}>💣🪙🎁</Text>
+              <Text style={styles.instructionText}>Special tiles have amazing effects!</Text>
+            </View>
             
             <View style={styles.instructionItem}>
               <Text style={styles.instructionIcon}>🔄</Text>
-              <Text style={styles.instructionText}>Click the switcher to clear half the board and reset the rest to the starting tile.</Text>
+              <Text style={styles.instructionText}>Switcher clears half the board</Text>
+            </View>
+            
+            <View style={styles.instructionItem}>
+              <Text style={styles.instructionIcon}>🪙</Text>
+              <Text style={styles.instructionText}>Earn coins to unlock premium themes</Text>
             </View>
             
             <View style={styles.instructionItem}>
@@ -136,6 +290,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+    position: 'relative',
   },
   topRow: {
     flexDirection: "row",
@@ -167,6 +322,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     marginBottom: 12,
+    gap: 4,
   },
   statBox: {
     flex: 1,
@@ -174,25 +330,36 @@ const styles = StyleSheet.create({
     backgroundColor: "#f8f8f8",
     paddingVertical: 8,
     borderRadius: 12,
-    marginHorizontal: 2,
+    marginHorizontal: 1,
   },
   statLabel: {
-    fontSize: 11,
+    fontSize: 10,
     color: "#666",
     fontWeight: "600",
   },
   statValue: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "800",
     color: "#333",
   },
   statEmoji: {
-    fontSize: 18,
+    fontSize: 16,
+  },
+  coinDisplay: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+  },
+  coinEmoji: {
+    fontSize: 12,
   },
   actionRow: {
     flexDirection: "row",
     gap: 8,
     marginBottom: 12,
+  },
+  switcherContainer: {
+    flex: 1,
   },
   actionBtn: {
     flex: 1,
@@ -207,7 +374,7 @@ const styles = StyleSheet.create({
   actionText: {
     fontSize: 14,
     fontWeight: "bold",
-    color: "#ffffffff",
+    color: "#ffffff",
   },
   newGameBtn: {
     flex: 2,
@@ -240,6 +407,35 @@ const styles = StyleSheet.create({
     backgroundColor: "#4CAF50",
     borderRadius: 2,
   },
+  rewardOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 20,
+  },
+  rewardNotification: {
+    alignItems: 'center',
+    padding: 20,
+  },
+  rewardEmoji: {
+    fontSize: 48,
+    marginBottom: 8,
+  },
+  rewardText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#4CAF50',
+    marginBottom: 4,
+  },
+  rewardSubtext: {
+    fontSize: 14,
+    color: '#666',
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
@@ -267,7 +463,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   instructionIcon: {
-    fontSize: 20,
+    fontSize: 18,
     marginRight: 12,
     width: 40,
   },
