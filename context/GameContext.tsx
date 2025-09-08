@@ -64,8 +64,6 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
   const [isGameOver, setIsGameOver] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
   const [animatingTiles, setAnimatingTiles] = useState<Set<string>>(new Set());
-  const [lastRewardScore, setLastRewardScore] = useState(0);
-
   const backgroundMusicRef = useRef<Audio.Sound | null>(null);
   const soundsRef = useRef<Record<string, Audio.Sound>>({});
   const lastMoveTimeRef = useRef(0);
@@ -137,10 +135,9 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
           AsyncStorage.getItem("soundEnabled"),
           AsyncStorage.getItem("musicEnabled"),
           AsyncStorage.getItem("isFirstTime"),
-          AsyncStorage.getItem("lastRewardScore"),
         ]);
 
-        const [bestScoreStr, bestTileStr, switcherStr, undoStr, coinsStr, soundStr, musicStr, firstTimeStr, rewardStr] = storedData;
+        const [bestScoreStr, bestTileStr, switcherStr, undoStr, coinsStr, soundStr, musicStr, firstTimeStr] = storedData;
 
         if (bestScoreStr) setBestScore(Number(bestScoreStr));
         if (bestTileStr) setBestTile(Number(bestTileStr));
@@ -149,7 +146,6 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
         if (coinsStr) setCoins(Number(coinsStr));
         if (soundStr !== null) setSoundEnabled(soundStr === 'true');
         if (musicStr !== null) setMusicEnabled(musicStr === 'true');
-        if (rewardStr) setLastRewardScore(Number(rewardStr));
 
         if (firstTimeStr === null) {
           setIsFirstTime(true);
@@ -307,9 +303,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
         break;
 
       case SPECIAL_TILES.REWARD:
-        playSound('unlock');
-        setSwitcherCount(prev => prev + 1);
-        newBoard[row][col] = 0;
+        // This is now handled in the move function
         break;
     }
 
@@ -330,7 +324,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
       const result = moveBoard(board, direction);
       if (!result || !result.newBoard) return;
 
-      const { newBoard, gained } = result;
+      const { newBoard, gained, specialEffects } = result;
       const boardChanged = JSON.stringify(board) !== JSON.stringify(newBoard);
 
       if (gained > 0 || boardChanged) {
@@ -347,20 +341,19 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
         setBoard(newBoard);
         setScore(newScore);
 
+        // Check for new special tile combinations
+        if (specialEffects && specialEffects.length > 0) {
+          for (const effect of specialEffects) {
+            if (effect.type === 'special_merge' && effect.tile1 === SPECIAL_TILES.REWARD) {
+              // Grant a switcher for every gift combo
+              setSwitcherCount(prev => prev + 1);
+              playSound('unlock');
+            }
+          }
+        }
+
         // Add special tiles occasionally
         addSpecialTile(newBoard);
-
-        // Check for rewards
-        const rewardThreshold = 1000;
-        const currentMilestones = Math.floor(newScore / rewardThreshold);
-        const lastMilestones = Math.floor(lastRewardScore / rewardThreshold);
-
-        if (currentMilestones > lastMilestones) {
-          const newSwitchers = currentMilestones - lastMilestones;
-          setSwitcherCount(prev => prev + newSwitchers);
-          setLastRewardScore(newScore);
-          playSound('unlock');
-        }
 
         // Update best score
         if (newScore > bestScore) {
@@ -384,7 +377,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (error) {
       console.error("Error during move:", error);
     }
-  }, [board, score, bestScore, bestTile, lastRewardScore, isGameOver, checkGameOver, playSound, addCoins, addSpecialTile]);
+  }, [board, score, bestScore, bestTile, isGameOver, checkGameOver, playSound, addCoins, addSpecialTile]);
 
   const newGame = useCallback(() => {
     const newBoard = initBoard();
