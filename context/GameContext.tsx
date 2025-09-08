@@ -1,9 +1,9 @@
 // Enhanced GameContext.tsx with new features
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
+import { initBoard, moveBoard } from "@/game/engine";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Audio } from 'expo-av';
-import { initBoard, moveBoard } from "@/game/engine";
-import { Animated, Vibration } from "react-native";
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { Vibration } from "react-native";
 
 type GameContextType = {
   board: number[][];
@@ -65,7 +65,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
   const [showTutorial, setShowTutorial] = useState(false);
   const [animatingTiles, setAnimatingTiles] = useState<Set<string>>(new Set());
   const [lastRewardScore, setLastRewardScore] = useState(0);
-  
+
   const backgroundMusicRef = useRef<Audio.Sound | null>(null);
   const soundsRef = useRef<Record<string, Audio.Sound>>({});
 
@@ -83,7 +83,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
         // Load background music
         if (musicEnabled) {
           const { sound } = await Audio.Sound.createAsync(
-            { uri: 'assets/music/background.mp3' },
+            require('@/assets/music/background.mp3'), // <-- use require
             { shouldPlay: true, isLooping: true, volume: 0.3 }
           );
           backgroundMusicRef.current = sound;
@@ -91,9 +91,9 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
 
         // Load sound effects
         const soundFiles = {
-          swipe: 'assets/music/swipe.mp3',
-          boom: 'assets/music/boom.mp3',
-          // For other sounds, we'll create programmatic beeps
+          swipe: require('@/assets/music/swipe.mp3'),
+          boom: require('@/assets/music/boom.mp3'),
+          // Add other sounds here
         };
 
         for (const [key, file] of Object.entries(soundFiles)) {
@@ -149,7 +149,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
         if (soundStr !== null) setSoundEnabled(soundStr === 'true');
         if (musicStr !== null) setMusicEnabled(musicStr === 'true');
         if (rewardStr) setLastRewardScore(Number(rewardStr));
-        
+
         if (firstTimeStr === null) {
           setIsFirstTime(true);
           setShowTutorial(true);
@@ -168,7 +168,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
   // Play sound effect
   const playSound = useCallback(async (type: 'move' | 'merge' | 'switch' | 'success' | 'unlock' | 'swipe' | 'boom' | 'coin') => {
     if (!soundEnabled) return;
-    
+
     try {
       if (soundsRef.current[type]) {
         await soundsRef.current[type].replayAsync();
@@ -182,7 +182,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
           unlock: 1500,
           coin: 1800,
         };
-        
+
         if (frequencies[type as keyof typeof frequencies]) {
           // In a real implementation, you'd use Web Audio API or native sound generation
           console.log(`Playing ${type} sound at ${frequencies[type as keyof typeof frequencies]}Hz`);
@@ -206,7 +206,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
     const newMusicState = !musicEnabled;
     setMusicEnabled(newMusicState);
     AsyncStorage.setItem("musicEnabled", String(newMusicState));
-    
+
     try {
       if (backgroundMusicRef.current) {
         if (newMusicState) {
@@ -284,7 +284,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
   // Handle special tile effects
   const handleSpecialTile = useCallback((board: number[][], row: number, col: number, tileType: number) => {
     const newBoard = [...board].map(r => [...r]);
-    
+
     switch (tileType) {
       case SPECIAL_TILES.BOMB:
         // Clear surrounding tiles
@@ -298,36 +298,36 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
           }
         }
         break;
-        
+
       case SPECIAL_TILES.COIN:
         playSound('coin');
         addCoins(100);
         newBoard[row][col] = 0;
         break;
-        
+
       case SPECIAL_TILES.REWARD:
         playSound('unlock');
         setSwitcherCount(prev => prev + 1);
         newBoard[row][col] = 0;
         break;
     }
-    
+
     return newBoard;
   }, [playSound, addCoins]);
 
   // Enhanced move function
   const move = useCallback((direction: "up" | "down" | "left" | "right") => {
     if (isGameOver) return;
-    
+
     try {
       playSound('swipe');
-      
+
       const result = moveBoard(board, direction);
       if (!result || !result.newBoard) return;
 
       const { newBoard, gained } = result;
       const boardChanged = JSON.stringify(board) !== JSON.stringify(newBoard);
-      
+
       if (gained > 0 || boardChanged) {
         if (gained > 0) {
           playSound('merge');
@@ -337,7 +337,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
             addCoins(coinsEarned);
           }
         }
-        
+
         const newScore = score + (gained || 0);
         setBoard(newBoard);
         setScore(newScore);
@@ -349,7 +349,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
         const rewardThreshold = 1000;
         const currentMilestones = Math.floor(newScore / rewardThreshold);
         const lastMilestones = Math.floor(lastRewardScore / rewardThreshold);
-        
+
         if (currentMilestones > lastMilestones) {
           const newSwitchers = currentMilestones - lastMilestones;
           setSwitcherCount(prev => prev + newSwitchers);
@@ -402,29 +402,29 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
 
   const switchTile = useCallback((row: number, col: number, newValue: number) => {
     if (switcherCount <= 0) return;
-    
+
     const newBoard = board.map((boardRow, i) =>
       boardRow.map((cell, j) =>
         i === row && j === col ? newValue : cell
       )
     );
-    
+
     setBoard(newBoard);
     setSwitcherCount(prev => {
       const newCount = Math.max(0, prev - 1);
       AsyncStorage.setItem("switcherCount", String(newCount));
       return newCount;
     });
-    
+
     playSound('switch');
   }, [board, switcherCount, playSound]);
 
   const useSwitcher = useCallback(() => {
     if (switcherCount <= 0) return;
-  
+
     const newBoard = [...board].map(row => [...row]);
     const occupiedTiles = [];
-    
+
     for (let i = 0; i < newBoard.length; i++) {
       for (let j = 0; j < newBoard[i].length; j++) {
         if (newBoard[i][j] !== 0) {
@@ -453,7 +453,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
       AsyncStorage.setItem("switcherCount", String(newCount));
       return newCount;
     });
-    
+
     playSound('switch');
   }, [board, switcherCount, playSound]);
 
@@ -466,12 +466,12 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <GameContext.Provider
-      value={{ 
-        board, 
-        score, 
-        bestScore, 
-        bestTile, 
-        theme, 
+      value={{
+        board,
+        score,
+        bestScore,
+        bestTile,
+        theme,
         switcherCount,
         undoCount,
         coins,
@@ -481,8 +481,8 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
         isGameOver,
         showTutorial,
         animatingTiles,
-        newGame, 
-        move, 
+        newGame,
+        move,
         setTheme: handleSetTheme,
         switchTile,
         toggleSound,
