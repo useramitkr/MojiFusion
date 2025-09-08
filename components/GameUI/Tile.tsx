@@ -1,5 +1,6 @@
 // Enhanced Tile.tsx with animations and special tiles
-import { useGame, SPECIAL_TILES } from "@/context/GameContext";
+import { useGame } from "@/context/GameContext";
+import { SPECIAL_TILES } from "@/game/engine";
 import { themes } from "@/game/themes";
 import React, { useState, useEffect, useRef } from "react";
 import { 
