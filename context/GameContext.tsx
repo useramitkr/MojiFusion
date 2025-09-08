@@ -68,6 +68,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
 
   const backgroundMusicRef = useRef<Audio.Sound | null>(null);
   const soundsRef = useRef<Record<string, Audio.Sound>>({});
+  const lastMoveTimeRef = useRef(0);
 
   // Initialize audio system
   useEffect(() => {
@@ -98,7 +99,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
 
         for (const [key, file] of Object.entries(soundFiles)) {
           try {
-            const { sound } = await Audio.Sound.createAsync({ uri: file });
+            const { sound } = await Audio.Sound.createAsync(file); // <-- use file directly, not { uri: file }
             soundsRef.current[key] = sound;
           } catch (error) {
             console.log(`Could not load ${key} sound:`, error);
@@ -317,6 +318,10 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
 
   // Enhanced move function
   const move = useCallback((direction: "up" | "down" | "left" | "right") => {
+    const now = Date.now();
+    if (now - lastMoveTimeRef.current < 100) return; // 100ms throttle
+    lastMoveTimeRef.current = now;
+
     if (isGameOver) return;
 
     try {
