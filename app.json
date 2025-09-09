@@ -3,7 +3,7 @@
     "name": "MojiFusion",
     "slug": "mojifusion",
     "owner": "amekr",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "mojifusion",
@@ -24,7 +24,7 @@
       "permissions": [
         "com.google.android.gms.permission.AD_ID"
       ],
-      "versionCode": 5
+      "versionCode": 6
     },
     "web": {
       "bundler": "metro",
