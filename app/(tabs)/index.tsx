@@ -2,7 +2,7 @@
 import Header from "@/components/GameUI/Header";
 import GameOverModal from "@/components/GameUI/GameOverModal";
 import React from "react";
-import { View, StyleSheet } from "react-native";
+import { StyleSheet, ImageBackground, View } from "react-native";
 import SwipeableBoard from "@/components/GameUI/SwipeableBoard";
 import { useGame } from "@/context/GameContext";
 import Tutorial from "@/components/GameUI/Tutorial";
@@ -17,7 +17,10 @@ export default function HomeScreen() {
   } = useGame();
 
   return (
-    <View style={styles.container}>
+    <ImageBackground 
+      source={require('@/assets/images/gamebg.png')} 
+      style={styles.container}
+    >
       <Header />
       <SwipeableBoard />
       
@@ -33,7 +36,7 @@ export default function HomeScreen() {
         onRestart={restartGame}
         onNewGame={newGame}
       />
-    </View>
+    </ImageBackground>
   );
 }
 
@@ -41,6 +44,5 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     alignItems: "center",
-    backgroundColor: "#fbf8ef"
   },
 });

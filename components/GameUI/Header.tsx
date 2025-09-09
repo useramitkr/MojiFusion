@@ -195,7 +195,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: "900",
-    color: "#FF6B35",
+    color: "#ffdd35ff",
   },
   controls: {
     flexDirection: "row",
@@ -266,7 +266,7 @@ const styles = StyleSheet.create({
   newGameText: {
     fontSize: 14,
     fontWeight: "bold",
-    color: "#FF6B35",
+    color: "#ffdd35ff",
   },
   modalOverlay: {
     flex: 1,
