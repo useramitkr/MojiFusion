@@ -4,6 +4,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Audio } from 'expo-av';
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { Vibration } from "react-native";
+import { THEME_DATA } from "@/game/themes";
 
 type GameContextType = {
   board: number[][];
@@ -20,18 +21,20 @@ type GameContextType = {
   isGameOver: boolean;
   showTutorial: boolean;
   animatingTiles: Set<string>;
+  unlockedThemes: string[];
   newGame: () => void;
   move: (direction: "up" | "down" | "left" | "right") => void;
   setTheme: (theme: string) => void;
   switchTile: (row: number, col: number, newValue: number) => void;
   toggleSound: () => void;
   toggleMusic: () => void;
-  playSound: (type: 'move' | 'merge' | 'switch' | 'success' | 'unlock' | 'swipe' | 'boom' | 'coin') => void;
+  playSound: (type: 'move' | 'merge' | 'switch' | 'success' | 'unlock' | 'swipe' | 'boom' | 'coin' | 'error') => void;
   useSwitcher: () => void;
   addCoins: (amount: number) => void;
   spendCoins: (amount: number) => boolean;
   dismissTutorial: () => void;
   restartGame: () => void;
+  buyTheme: (themeId: string) => boolean;
 };
 
 const GameContext = createContext<GameContextType | null>(null);
@@ -64,6 +67,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
   const [isGameOver, setIsGameOver] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
   const [animatingTiles, setAnimatingTiles] = useState<Set<string>>(new Set());
+  const [unlockedThemes, setUnlockedThemes] = useState<string[]>(['fruits']);
   const backgroundMusicRef = useRef<Audio.Sound | null>(null);
   const soundsRef = useRef<Record<string, Audio.Sound>>({});
   const lastMoveTimeRef = useRef(0);
@@ -135,9 +139,20 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
           AsyncStorage.getItem("soundEnabled"),
           AsyncStorage.getItem("musicEnabled"),
           AsyncStorage.getItem("isFirstTime"),
+          AsyncStorage.getItem("unlockedThemes"),
         ]);
 
-        const [bestScoreStr, bestTileStr, switcherStr, undoStr, coinsStr, soundStr, musicStr, firstTimeStr] = storedData;
+        const [
+          bestScoreStr,
+          bestTileStr,
+          switcherStr,
+          undoStr,
+          coinsStr,
+          soundStr,
+          musicStr,
+          firstTimeStr,
+          unlockedThemesStr
+        ] = storedData;
 
         if (bestScoreStr) setBestScore(Number(bestScoreStr));
         if (bestTileStr) setBestTile(Number(bestTileStr));
@@ -146,6 +161,10 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
         if (coinsStr) setCoins(Number(coinsStr));
         if (soundStr !== null) setSoundEnabled(soundStr === 'true');
         if (musicStr !== null) setMusicEnabled(musicStr === 'true');
+
+        if (unlockedThemesStr) {
+          setUnlockedThemes(JSON.parse(unlockedThemesStr));
+        }
 
         if (firstTimeStr === null) {
           setIsFirstTime(true);
@@ -163,7 +182,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   // Play sound effect
-  const playSound = useCallback(async (type: 'move' | 'merge' | 'switch' | 'success' | 'unlock' | 'swipe' | 'boom' | 'coin') => {
+  const playSound = useCallback(async (type: 'move' | 'merge' | 'switch' | 'success' | 'unlock' | 'swipe' | 'boom' | 'coin' | 'error') => {
     if (!soundEnabled) return;
 
     try {
@@ -178,6 +197,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
           success: 1200,
           unlock: 1500,
           coin: 1800,
+          error: 400,
         };
 
         if (frequencies[type as keyof typeof frequencies]) {
@@ -239,6 +259,39 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
     }
     return false;
   }, [coins]);
+  
+  // Buy theme function
+  const buyTheme = useCallback((themeId: string): boolean => {
+    const themeData = THEME_DATA.find(t => t.id === themeId);
+    if (!themeData) {
+      console.error(`Theme with ID ${themeId} not found.`);
+      return false;
+    }
+
+    if (unlockedThemes.includes(themeId)) {
+      console.log(`Theme ${themeId} is already unlocked.`);
+      return false;
+    }
+    
+    if (coins >= themeData.requiredCoins) {
+      setCoins(prevCoins => {
+        const newCoins = prevCoins - themeData.requiredCoins;
+        AsyncStorage.setItem("coins", String(newCoins));
+        return newCoins;
+      });
+      setUnlockedThemes(prev => {
+        const newUnlocked = [...prev, themeId];
+        AsyncStorage.setItem("unlockedThemes", JSON.stringify(newUnlocked));
+        return newUnlocked;
+      });
+      playSound('unlock');
+      return true;
+    } else {
+      playSound('error');
+      return false;
+    }
+  }, [coins, unlockedThemes, playSound]);
+
 
   // Check for game over
   const checkGameOver = useCallback((currentBoard: number[][]) => {
@@ -458,6 +511,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
   const handleSetTheme = useCallback((newTheme: string) => {
     if (typeof newTheme === 'string' && newTheme.trim().length > 0) {
       setTheme(newTheme);
+      AsyncStorage.setItem("theme", newTheme);
       playSound('success');
     }
   }, [playSound]);
@@ -479,6 +533,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
         isGameOver,
         showTutorial,
         animatingTiles,
+        unlockedThemes,
         newGame,
         move,
         setTheme: handleSetTheme,
@@ -491,6 +546,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
         spendCoins,
         dismissTutorial,
         restartGame,
+        buyTheme,
       }}
     >
       {children}
