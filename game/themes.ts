@@ -125,6 +125,20 @@ export const themes: Record<string, Record<number, string>> = {
     1024: "🚤",
     2048: "🛥️",
   },
+
+  human: {
+    2: "👶",
+    4: "👩‍🦱",
+    8: "🧑‍🎓",
+    16: "👨‍⚕️",
+    32: "👫",
+    64: "👩‍❤️‍👨",
+    128: "🤱",
+    256: "👯‍♀️",
+    512: "🧑‍✈️",
+    1024: "👴🏼",
+    2048: "🪦",
+  },
 };
 
 export const THEME_DATA = [
@@ -169,7 +183,7 @@ export const THEME_DATA = [
     name: "Emotions", 
     icon: "😀", 
     requiredScore: 10000, 
-    requiredCoins: 400, 
+    requiredCoins: 350, 
     category: "Human", 
     preview: ["😀", "😍", "🤩", "😎"] 
   },
@@ -187,7 +201,7 @@ export const THEME_DATA = [
     name: "Sports", 
     icon: "⚽", 
     requiredScore: 15000, 
-    requiredCoins: 600, 
+    requiredCoins: 300, 
     category: "Activities", 
     preview: ["⚽", "🏀", "🎾", "🏈"] 
   },
@@ -196,7 +210,7 @@ export const THEME_DATA = [
     name: "Space", 
     icon: "🚀", 
     requiredScore: 17500, 
-    requiredCoins: 700, 
+    requiredCoins: 300, 
     category: "Fantasy", 
     preview: ["🚀", "🛸", "👽", "🌟"] 
   },
@@ -205,9 +219,18 @@ export const THEME_DATA = [
     name: "Vehicles", 
     icon: "🚗", 
     requiredScore: 20000, 
-    requiredCoins: 800, 
+    requiredCoins: 350, 
     category: "Transport", 
     preview: ["🚗", "✈️", "🚂", "🚁"] 
+  },
+  { 
+    id: "human", 
+    name: "Human", 
+    icon: "👩‍❤️‍👨", 
+    requiredScore: 30000, 
+    requiredCoins: 1500, 
+    category: "Human", 
+    preview: ["👶", "👩‍❤️‍👨", "🧑‍🎓", "👴🏼"] 
   },
 ];
 
