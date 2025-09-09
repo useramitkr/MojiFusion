@@ -57,7 +57,7 @@ const getSpecialEmoji = (value: number) => {
   switch (value) {
     case SPECIAL_TILES.BOMB: return '💣';
     case SPECIAL_TILES.COIN: return '🪙';
-    case SPECIAL_TILES.REWARD: return '🎁';
+    case SPECIAL_TILES.REWARD: return '🔑';
     default: return '';
   }
 };
@@ -254,11 +254,11 @@ const styles = StyleSheet.create({
   empty: {
     flex: 1,
     margin: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    backgroundColor: 'rgba(246, 237, 237, 0.3)',
     borderRadius: 16,
     minHeight: TILE_SIZE,
     borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.5)',
+    borderColor: 'rgba(255, 255, 255, 0.28)',
   },
   tileContainer: {
     flex: 1,

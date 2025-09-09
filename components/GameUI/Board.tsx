@@ -9,7 +9,7 @@ export default function Board() {
   
   return (
     <LinearGradient
-      colors={['#b8a391', '#a68b5b']}
+      colors={['transparent', 'transparent']}
       style={styles.boardContainer}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
