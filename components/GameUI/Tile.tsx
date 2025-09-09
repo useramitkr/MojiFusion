@@ -254,11 +254,11 @@ const styles = StyleSheet.create({
   empty: {
     flex: 1,
     margin: 4,
-    backgroundColor: 'rgba(246, 237, 237, 0.3)',
+    backgroundColor: 'rgba(246, 237, 237, 0.52)',
     borderRadius: 16,
     minHeight: TILE_SIZE,
     borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.28)',
+    borderColor: 'rgba(255, 255, 255, 0.47)',
   },
   tileContainer: {
     flex: 1,

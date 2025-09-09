@@ -63,7 +63,7 @@ const styles = StyleSheet.create({
     width: "90%",
     aspectRatio: 1,
     marginTop: 20,
-    backgroundColor: "#b8a391",
+    backgroundColor: "rgba(184, 163, 145, 0.1)",
     borderRadius: 10,
     padding: 4,
   },
