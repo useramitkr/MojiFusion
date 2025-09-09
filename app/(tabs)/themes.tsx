@@ -135,7 +135,6 @@ export default function ThemesScreen() {
   return (
     <ThemedView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>🎨 Theme Gallery</Text>
         <Text style={styles.subtitle}>Best Score: {bestScore.toLocaleString()} points</Text>
         
         {nextThemeProgress && (

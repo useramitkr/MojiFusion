@@ -1,6 +1,6 @@
 // app/(tabs)/settings.tsx
 import React from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch } from "react-native";
+import { View, Text, StyleSheet, ScrollView, Switch } from "react-native";
 import { ThemedView } from "@/components/ThemedView";
 import { useGame } from "@/context/GameContext";
 import Legal from "@/components/GameUI/legal";
@@ -13,8 +13,7 @@ export default function SettingsScreen() {
     bestScore, 
     switcherCount, 
     toggleSound, 
-    toggleMusic,
-    restartGame 
+    toggleMusic
   } = useGame();
 
   return (
@@ -41,8 +40,8 @@ export default function SettingsScreen() {
               <Text style={styles.statValue}>{coins.toLocaleString()}</Text>
             </View>
             <View style={styles.statCard}>
-              <Text style={styles.statEmoji}>⏳</Text>
-              <Text style={styles.statLabel}>Switchers</Text>
+              <Text style={styles.statEmoji}>🔑</Text>
+              <Text style={styles.statLabel}>Keys</Text>
               <Text style={styles.statValue}>{switcherCount}</Text>
             </View>
           </View>
@@ -81,19 +80,6 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {/* Game Controls */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>🎮 Game Controls</Text>
-          
-          <TouchableOpacity style={styles.actionButton} onPress={restartGame}>
-            <Text style={styles.actionButtonEmoji}>🔄</Text>
-            <View style={styles.actionButtonText}>
-              <Text style={styles.actionButtonTitle}>New Game</Text>
-              <Text style={styles.actionButtonDesc}>Start a fresh game</Text>
-            </View>
-          </TouchableOpacity>
-        </View>
-
         {/* Instructions */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>📖 How to Play</Text>
@@ -109,21 +95,20 @@ export default function SettingsScreen() {
             <Text style={styles.instructionTitle}>✨ Special Features</Text>
             <Text style={styles.instructionText}>• 💣 Bomb: Clears surrounding tiles</Text>
             <Text style={styles.instructionText}>• 🪙 Coin: Adds 100 bonus points</Text>
-            <Text style={styles.instructionText}>• 🎁 Reward: Gives extra switchers</Text>
-            <Text style={styles.instructionText}>• ⏳ Switcher: Reset half the board</Text>
+            <Text style={styles.instructionText}>• 🎁 Reward: Gives extra keys</Text>
+            <Text style={styles.instructionText}>• 🔑 Key: Reset half the board</Text>
           </View>
 
           <View style={styles.instructionCard}>
             <Text style={styles.instructionTitle}>🏅 Rewards System</Text>
             <Text style={styles.instructionText}>• Earn coins from your score (1 coin per 10 points)</Text>
-            <Text style={styles.instructionText}>• Get switchers every 1000 points</Text>
+            <Text style={styles.instructionText}>• Get keys in surprise boxes</Text>
             <Text style={styles.instructionText}>• Use coins to unlock premium themes</Text>
           </View>
         </View>
 
         {/* Legal */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>📄 Legal</Text>
           <Legal />
         </View>
 

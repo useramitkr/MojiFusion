@@ -1,4 +1,4 @@
-// Enhanced Header.tsx with reward animations
+// Enhanced Header.tsx with new layout
 import { useGame } from "@/context/GameContext";
 import { themes } from "@/game/themes";
 import React, { useState, useEffect, useRef } from "react";
@@ -23,76 +23,14 @@ export default function Header() {
     theme, 
     switcherCount, 
     coins,
-    soundEnabled, 
-    toggleSound, 
-    useSwitcher 
+    useSwitcher
   } = useGame();
   
   const [showInstructions, setShowInstructions] = useState(false);
-  const [showRewardAnimation, setShowRewardAnimation] = useState(false);
-  const [lastSwitcherCount, setLastSwitcherCount] = useState(switcherCount);
   
   const bestTileEmoji = themes[theme][bestTile] || "❓";
   
-  // Animation values for rewards
-  const rewardScale = useRef(new Animated.Value(0)).current;
-  const rewardOpacity = useRef(new Animated.Value(0)).current;
-  const switcherBounce = useRef(new Animated.Value(1)).current;
   const coinPulse = useRef(new Animated.Value(1)).current;
-
-  // Reward notification animation
-  useEffect(() => {
-    if (switcherCount > lastSwitcherCount) {
-      setShowRewardAnimation(true);
-      
-      // Animate reward notification
-      Animated.sequence([
-        Animated.parallel([
-          Animated.timing(rewardScale, {
-            toValue: 1,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-          Animated.timing(rewardOpacity, {
-            toValue: 1,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-        ]),
-        Animated.delay(2000),
-        Animated.parallel([
-          Animated.timing(rewardScale, {
-            toValue: 0,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-          Animated.timing(rewardOpacity, {
-            toValue: 0,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-        ]),
-      ]).start(() => {
-        setShowRewardAnimation(false);
-      });
-
-      // Animate switcher button
-      Animated.sequence([
-        Animated.timing(switcherBounce, {
-          toValue: 1.3,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(switcherBounce, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start();
-
-      setLastSwitcherCount(switcherCount);
-    }
-  }, [switcherCount, lastSwitcherCount]);
 
   // Coin pulse animation
   useEffect(() => {
@@ -113,7 +51,7 @@ export default function Header() {
     pulseAnimation.start();
     
     return () => pulseAnimation.stop();
-  }, []);
+  }, [coinPulse]);
 
   return (
     <>
@@ -128,11 +66,20 @@ export default function Header() {
             >
               <Text style={styles.controlIcon}>❓</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.controlBtn}
-              onPress={toggleSound}
+            
+            <TouchableOpacity
+              style={[
+                styles.actionBtn, 
+                switcherCount > 0 && styles.activeBtn
+              ]}
+              onPress={useSwitcher}
+              disabled={switcherCount <= 0}
             >
-              <Text style={styles.controlIcon}>{soundEnabled ? '🔊' : '🔇'}</Text>
+              <Text style={styles.actionText}>🔑 {switcherCount}</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity onPress={newGame}>
+              <Text style={styles.newGameText}>New Game</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -150,7 +97,8 @@ export default function Header() {
           <Animated.View 
             style={[
               styles.statBox,
-              { transform: [{ scale: coinPulse }] }
+              { transform: [{ scale: coinPulse }] },
+              { backgroundColor: "#ffffff" }
             ]}
           >
             <Text style={styles.statLabel}>Coins</Text>
@@ -165,114 +113,61 @@ export default function Header() {
           </View>
         </View>
 
-        {/* Action Row */}
-        <View style={styles.actionRow}>
-          <Animated.View
-            style={[
-              styles.switcherContainer,
-              { transform: [{ scale: switcherBounce }] }
-            ]}
-          >
-            <TouchableOpacity
-              style={[styles.actionBtn, switcherCount > 0 && styles.activeBtn]}
-              onPress={useSwitcher}
-              disabled={switcherCount <= 0}
-            >
-              <Text style={styles.actionText}>⏳ {switcherCount}</Text>
-            </TouchableOpacity>
-          </Animated.View>
-          
-          <TouchableOpacity onPress={newGame} style={styles.newGameBtn}>
-            <Text style={styles.newGameText}>🐰 New Game</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Progress Bar */}
-        <View style={styles.progressContainer}>
-          <Text style={styles.progressText}>
-            Next switcher: {1000 - (score % 1000)} points
-          </Text>
-          <View style={styles.progressBar}>
-            <View 
-              style={[styles.progressFill, { width: `${(score % 1000) / 10}%` }]} 
-            />
-          </View>
-        </View>
-
-        {/* Reward Animation Overlay */}
-        {showRewardAnimation && (
-          <Animated.View
-            style={[
-              styles.rewardOverlay,
-              {
-                opacity: rewardOpacity,
-                transform: [{ scale: rewardScale }],
-              },
-            ]}
-          >
-            <View style={styles.rewardNotification}>
-              <Text style={styles.rewardEmoji}>🎉</Text>
-              <Text style={styles.rewardText}>Switcher Earned!</Text>
-              <Text style={styles.rewardSubtext}>+1 Switcher Power-up</Text>
-            </View>
-          </Animated.View>
-        )}
-      </View>
-
-      {/* Instructions Modal */}
-      <Modal
-        visible={showInstructions}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowInstructions(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowInstructions(false)}
+        {/* Instructions Modal */}
+        <Modal
+          visible={showInstructions}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowInstructions(false)}
         >
-          <View style={styles.instructionsModal}>
-            <Text style={styles.modalTitle}>🎮 How to Play</Text>
-            
-            <View style={styles.instructionItem}>
-              <Text style={styles.instructionIcon}>⬅️➡️⬆️⬇️</Text>
-              <Text style={styles.instructionText}>Swipe to move tiles</Text>
-            </View>
-            
-            <View style={styles.instructionItem}>
-              <Text style={styles.instructionIcon}>🍎 + 🍎 = 🍌</Text>
-              <Text style={styles.instructionText}>Merge same items to evolve</Text>
-            </View>
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowInstructions(false)}
+          >
+            <View style={styles.instructionsModal}>
+              <Text style={styles.modalTitle}>🎮 How to Play</Text>
+              
+              <View style={styles.instructionItem}>
+                <Text style={styles.instructionIcon}>⬅️➡️⬆️⬇️</Text>
+                <Text style={styles.instructionText}>Swipe to move tiles</Text>
+              </View>
+              
+              <View style={styles.instructionItem}>
+                <Text style={styles.instructionIcon}>🍎 + 🍎 = 🍌</Text>
+                <Text style={styles.instructionText}>Merge same items to evolve</Text>
+              </View>
 
-            <View style={styles.instructionItem}>
-              <Text style={styles.instructionIcon}>💣🪙🎁</Text>
-              <Text style={styles.instructionText}>Special tiles have amazing effects!</Text>
-            </View>
-            
-            <View style={styles.instructionItem}>
-              <Text style={styles.instructionIcon}>🔄</Text>
-              <Text style={styles.instructionText}>Switcher clears half the board</Text>
-            </View>
-            
-            <View style={styles.instructionItem}>
-              <Text style={styles.instructionIcon}>🪙</Text>
-              <Text style={styles.instructionText}>Earn coins to unlock premium themes</Text>
-            </View>
-            
-            <View style={styles.instructionItem}>
-              <Text style={styles.instructionIcon}>🎯</Text>
-              <Text style={styles.instructionText}>Goal: Get highest score and unlock themes!</Text>
-            </View>
+              <View style={styles.instructionItem}>
+                <Text style={styles.instructionIcon}>💣🪙🎁</Text>
+                <Text style={styles.instructionText}>Special tiles have amazing effects!</Text>
+              </View>
+              
+              <View style={styles.instructionItem}>
+                <Text style={styles.instructionIcon}>⏳</Text>
+                <Text style={styles.instructionText}>Switcher clears half the board</Text>
+              </View>
+              
+              <View style={styles.instructionItem}>
+                <Text style={styles.instructionIcon}>🪙</Text>
+                <Text style={styles.instructionText}>Earn coins to unlock premium themes</Text>
+              </View>
+              
+              <View style={styles.instructionItem}>
+                <Text style={styles.instructionIcon}>🎯</Text>
+                <Text style={styles.instructionText}>Goal: Get highest score and unlock themes!</Text>
+              </View>
 
-            <TouchableOpacity 
-              style={styles.closeBtn}
-              onPress={() => setShowInstructions(false)}
-            >
-              <Text style={styles.closeBtnText}>Got it! 🎉</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
+              <TouchableOpacity 
+                style={styles.closeBtn}
+                onPress={() => setShowInstructions(false)}
+              >
+                <Text style={styles.closeBtnText}>Got it! 🎉</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </Modal>
+      </View>
     </>
   );
 }
@@ -281,9 +176,8 @@ const styles = StyleSheet.create({
   header: {
     width: "95%",
     marginTop: 10,
-    paddingVertical: 12,
+    paddingTop: 12,
     paddingHorizontal: 16,
-    backgroundColor: "#fff",
     borderRadius: 20,
     elevation: 4,
     shadowColor: "#000",
@@ -305,6 +199,7 @@ const styles = StyleSheet.create({
   },
   controls: {
     flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   controlBtn: {
@@ -327,13 +222,13 @@ const styles = StyleSheet.create({
   statBox: {
     flex: 1,
     alignItems: "center",
-    backgroundColor: "#f8f8f8",
+    backgroundColor: "#f8f8f8ff",
     paddingVertical: 8,
     borderRadius: 12,
     marginHorizontal: 1,
   },
   statLabel: {
-    fontSize: 10,
+    fontSize: 12,
     color: "#666",
     fontWeight: "600",
   },
@@ -353,88 +248,25 @@ const styles = StyleSheet.create({
   coinEmoji: {
     fontSize: 12,
   },
-  actionRow: {
-    flexDirection: "row",
-    gap: 8,
-    marginBottom: 12,
-  },
-  switcherContainer: {
-    flex: 1,
-  },
   actionBtn: {
-    flex: 1,
-    paddingVertical: 10,
-    backgroundColor: "#e0e0e0",
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    // backgroundColor: "#e0e0e0",
     borderRadius: 12,
     alignItems: "center",
   },
   activeBtn: {
-    backgroundColor: "#4CAF50",
+    // backgroundColor: "#4CAF50",
   },
   actionText: {
     fontSize: 14,
     fontWeight: "bold",
-    color: "#ffffff",
-  },
-  newGameBtn: {
-    flex: 2,
-    paddingVertical: 10,
-    backgroundColor: "#FF6B35",
-    borderRadius: 12,
-    alignItems: "center",
+    color: "#000000",
   },
   newGameText: {
     fontSize: 14,
     fontWeight: "bold",
-    color: "#fff",
-  },
-  progressContainer: {
-    alignItems: "center",
-  },
-  progressText: {
-    fontSize: 11,
-    color: "#666",
-    marginBottom: 4,
-  },
-  progressBar: {
-    width: "100%",
-    height: 4,
-    backgroundColor: "#e0e0e0",
-    borderRadius: 2,
-  },
-  progressFill: {
-    height: "100%",
-    backgroundColor: "#4CAF50",
-    borderRadius: 2,
-  },
-  rewardOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 20,
-  },
-  rewardNotification: {
-    alignItems: 'center',
-    padding: 20,
-  },
-  rewardEmoji: {
-    fontSize: 48,
-    marginBottom: 8,
-  },
-  rewardText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#4CAF50',
-    marginBottom: 4,
-  },
-  rewardSubtext: {
-    fontSize: 14,
-    color: '#666',
+    color: "#FF6B35",
   },
   modalOverlay: {
     flex: 1,
