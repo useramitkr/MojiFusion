@@ -27,7 +27,7 @@ export default function SettingsScreen() {
         
         {/* Stats Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>📊 Game Stats</Text>
+          {/* <Text style={styles.sectionTitle}>📊 Game Stats</Text> */}
           <View style={styles.statsGrid}>
             <View style={styles.statCard}>
               <Text style={styles.statEmoji}>🏆</Text>
@@ -49,7 +49,7 @@ export default function SettingsScreen() {
 
         {/* Audio Settings */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>🔊 Audio Settings</Text>
+          {/* <Text style={styles.sectionTitle}>🔊 Audio Settings</Text> */}
           
           <View style={styles.settingItem}>
             <View style={styles.settingInfo}>
