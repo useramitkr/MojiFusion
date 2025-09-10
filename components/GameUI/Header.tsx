@@ -1,34 +1,34 @@
 // Enhanced Header.tsx with new layout
 import { useGame } from "@/context/GameContext";
 import React, { useState, useEffect, useRef } from "react";
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  Modal, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Modal,
   Animated,
   Dimensions,
-  Easing 
+  Easing
 } from "react-native";
 
 const { width } = Dimensions.get('window');
 
 export default function Header() {
-  const { 
-    score, 
-    bestScore, 
-    newGame, 
-    switcherCount, 
+  const {
+    score,
+    bestScore,
+    newGame,
+    switcherCount,
     coins,
     useSwitcher,
     level,
     progress,
     nextLevelScore
   } = useGame();
-  
+
   const [showInstructions, setShowInstructions] = useState(false);
-  
+
   const coinPulse = useRef(new Animated.Value(1)).current;
   const switcherPop = useRef(new Animated.Value(1)).current;
   const prevSwitcherCount = useRef(switcherCount);
@@ -62,7 +62,7 @@ export default function Header() {
     }
     prevSwitcherCount.current = switcherCount;
   }, [switcherCount]);
-  
+
   const progressWidth = progressAnim.interpolate({
     inputRange: [0, nextLevelScore],
     outputRange: ['0%', '100%'],
@@ -78,10 +78,10 @@ export default function Header() {
             <TouchableOpacity style={styles.controlBtn} onPress={() => setShowInstructions(true)}>
               <Text style={styles.controlIcon}>❓</Text>
             </TouchableOpacity>
-            
+
             <TouchableOpacity
               style={[
-                styles.actionBtn, 
+                styles.actionBtn,
                 switcherCount > 0 && styles.activeBtn
               ]}
               onPress={useSwitcher}
@@ -97,30 +97,32 @@ export default function Header() {
             </TouchableOpacity>
           </View>
         </View>
-
+        {/* Game Level and Stats */}
         <View style={styles.statsRow}>
-            <View style={styles.statBox}>
-                <Text style={styles.statLabel}>Score</Text>
-                <Text style={styles.statValue}>{score.toLocaleString()}</Text>
+          <View style={[styles.statBox, styles.levelStatBox]}>
+            <Text style={styles.levelText}>Level {level}</Text>
+            <View style={styles.progressBarContainer}>
+              <Animated.View style={[styles.progressBar, { width: progressWidth }]} />
             </View>
-            {/* <View style={styles.statBox}>
+            <Text style={styles.progressText}>{progress.toLocaleString()}/{nextLevelScore.toLocaleString()}</Text>
+          </View>
+          {/* Current Score  */}
+          <View style={styles.statBox}>
+            <Text style={styles.statLabel}>Score</Text>
+            <Text style={styles.statValue}>{score.toLocaleString()}</Text>
+          </View>
+          {/* <View style={styles.statBox}>
                 <Text style={styles.statLabel}>Best</Text>
                 <Text style={styles.statValue}>{bestScore.toLocaleString()}</Text>
             </View> */}
-            <Animated.View style={[styles.statBox, { transform: [{ scale: coinPulse }] }]}>
-                <Text style={styles.statLabel}>Coins</Text>
-                <View style={styles.coinDisplay}>
-                {/* <Text style={styles.coinEmoji}>🪙</Text> */}
-                <Text style={styles.statValue}>{coins}</Text>
-                </View>
-            </Animated.View>
-             <View style={[styles.statBox, styles.levelStatBox]}>
-                <Text style={styles.levelText}>Level {level}</Text>
-                <View style={styles.progressBarContainer}>
-                    <Animated.View style={[styles.progressBar, { width: progressWidth }]} />
-                </View>
-                <Text style={styles.progressText}>{progress.toLocaleString()}/{nextLevelScore.toLocaleString()}</Text>
+          {/* Earned Coins  */}
+          <Animated.View style={[styles.statBox, { transform: [{ scale: coinPulse }] }]}>
+            <Text style={styles.statLabel}>Coins</Text>
+            <View style={styles.coinDisplay}>
+              {/* <Text style={styles.coinEmoji}>🪙</Text> */}
+              <Text style={styles.statValue}>{coins}</Text>
             </View>
+          </Animated.View>
         </View>
 
         <Modal visible={showInstructions} transparent animationType="fade" onRequestClose={() => setShowInstructions(false)}>

@@ -25,7 +25,7 @@ const TILE_SIZE = (width * 0.9) / 4 - 8;
 const getTileStyle = (value: number) => {
   // Special tiles
   if (value === SPECIAL_TILES.BOMB) {
-    return { bg: '#FF4444', border: '#CC0000', emoji: true, special: 'bomb' };
+    return { bg: '#fcfa7aff', border: '#CC0000', emoji: true, special: 'bomb' };
   }
   if (value === SPECIAL_TILES.COIN) {
     return { bg: '#FFD700', border: '#FFA500', emoji: true, special: 'coin' };
@@ -55,7 +55,7 @@ const getTileStyle = (value: number) => {
 // Get special tile emoji
 const getSpecialEmoji = (value: number) => {
   switch (value) {
-    case SPECIAL_TILES.BOMB: return '💣';
+    case SPECIAL_TILES.BOMB: return '🔥';
     case SPECIAL_TILES.COIN: return '🪙';
     case SPECIAL_TILES.REWARD: return '🔑';
     default: return '';
