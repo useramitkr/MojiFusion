@@ -4,27 +4,10 @@ import React from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from "react-native";
 import { ThemedView } from "@/components/ThemedView";
 import Legal from "@/components/GameUI/legal";
-import { THEME_DATA } from "@/game/themes";
-
-const CATEGORIES = ["Nature", "Animals", "Human", "Activities", "Fantasy", "Transport"];
+import { THEME_DATA, CATEGORIES } from "@/game/themes";
 
 export default function ThemesScreen() {
   const { theme, setTheme, bestScore, coins, unlockedThemes, buyTheme, playSound } = useGame();
-
-  const getThemesByCategory = (category: string) => {
-    return THEME_DATA.filter(t => t.category === category);
-  };
-
-  const getProgressToNextTheme = () => {
-    const nextTheme = THEME_DATA
-      .filter(t => t.requiredScore > bestScore && !unlockedThemes.includes(t.id))
-      .sort((a, b) => a.requiredScore - b.requiredScore)[0];
-    
-    if (!nextTheme) return null;
-    
-    const pointsNeeded = nextTheme.requiredScore - bestScore;
-    return { theme: nextTheme, pointsNeeded };
-  };
 
   const isThemeUnlocked = (themeId: string) => {
     return unlockedThemes.includes(themeId);
@@ -60,8 +43,6 @@ export default function ThemesScreen() {
     }
   };
 
-  const nextThemeProgress = getProgressToNextTheme();
-
   return (
     <ThemedView style={styles.container}>
       <View style={styles.header}>
@@ -72,26 +53,6 @@ export default function ThemesScreen() {
             <Text style={styles.subtitle}>{coins.toLocaleString()}</Text>
           </View>
         </View>
-        
-        {nextThemeProgress && (
-          <View style={styles.progressCard}>
-            <Text style={styles.progressTitle}>
-              Next Score Unlock: {nextThemeProgress.theme.name} {nextThemeProgress.theme.icon}
-            </Text>
-            <Text style={styles.progressText}>
-              {nextThemeProgress.pointsNeeded.toLocaleString()} points needed
-            </Text>
-            <View style={styles.progressBar}>
-              <View 
-                style={[
-                  styles.progressFill, 
-                  { width: `${((bestScore / nextThemeProgress.theme.requiredScore) * 100)}%` }
-                ]} 
-              />
-            </View>
-          </View>
-        )}
-        <Legal />
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
@@ -109,9 +70,7 @@ export default function ThemesScreen() {
                 contentContainerStyle={styles.themesRow}
               >
                 {categoryThemes.map((themeData) => {
-                  const unlockedByScore = bestScore >= themeData.requiredScore;
-                  const unlockedByPurchase = isThemeUnlocked(themeData.id);
-                  const isLocked = !unlockedByScore && !unlockedByPurchase;
+                  const isUnlocked = isThemeUnlocked(themeData.id);
                   const isSelected = theme === themeData.id;
                   
                   return (
@@ -119,17 +78,14 @@ export default function ThemesScreen() {
                       key={themeData.id}
                       style={[
                         styles.themeCard,
-                        isLocked && styles.lockedCard,
+                        !isUnlocked && styles.lockedCard,
                         isSelected && styles.selectedCard,
                       ]}
                       onPress={() => {
-                        if (unlockedByScore || unlockedByPurchase) {
+                        if (isUnlocked) {
                           setTheme(themeData.id);
-                        } else if (coins >= themeData.requiredCoins) {
-                          handleBuyTheme(themeData.id);
                         } else {
-                          playSound('error');
-                          Alert.alert("Not Enough Coins", "You don't have enough coins to buy this theme!");
+                          handleBuyTheme(themeData.id);
                         }
                       }}
                       activeOpacity={0.8}
@@ -137,10 +93,10 @@ export default function ThemesScreen() {
                       <View style={styles.cardHeader}>
                         <Text style={styles.themeIcon}>{themeData.icon}</Text>
                         {isSelected && <Text style={styles.selectedBadge}>✓</Text>}
-                        {isLocked && <Text style={styles.lockIcon}>🔒</Text>}
+                        {!isUnlocked && <Text style={styles.lockIcon}>🔒</Text>}
                       </View>
                       
-                      <Text style={[styles.themeName, isLocked && styles.lockedText]}>
+                      <Text style={[styles.themeName, !isUnlocked && styles.lockedText]}>
                         {themeData.name}
                       </Text>
                       
@@ -150,7 +106,7 @@ export default function ThemesScreen() {
                             key={index} 
                             style={[
                               styles.previewEmoji, 
-                              isLocked && styles.grayedOut
+                              !isUnlocked && styles.grayedOut
                             ]}
                           >
                             {emoji}
@@ -158,15 +114,10 @@ export default function ThemesScreen() {
                         ))}
                       </View>
                       
-                      {unlockedByPurchase ? (
-                        <Text style={styles.unlockedText}>Purchased! 🎉</Text>
-                      ) : unlockedByScore ? (
-                        <Text style={styles.unlockedText}>Unlocked! 🎉</Text>
+                      {isUnlocked ? (
+                         <Text style={styles.unlockedText}>{themeData.requiredCoins > 0 ? 'Purchased! 🎉' : 'Default'}</Text>
                       ) : (
                         <View style={styles.costContainer}>
-                          <Text style={styles.requiredScore}>
-                            {themeData.requiredScore.toLocaleString()} pts
-                          </Text>
                           <View style={styles.buyButton}>
                             <Text style={styles.buyText}>{themeData.requiredCoins} 🪙</Text>
                           </View>
@@ -206,12 +157,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: "900",
-    color: "#FF6B35",
-    textAlign: "center",
-  },
   subtitle: {
     fontSize: 16,
     color: "#666",
@@ -230,38 +175,6 @@ const styles = StyleSheet.create({
   coinEmoji: {
     fontSize: 16,
     marginRight: 4,
-  },
-  progressCard: {
-    backgroundColor: "#f0f8ff",
-    padding: 16,
-    borderRadius: 16,
-    marginTop: 8,
-    borderWidth: 2,
-    borderColor: "#4CAF50",
-  },
-  progressTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#333",
-    textAlign: "center",
-  },
-  progressText: {
-    fontSize: 14,
-    color: "#4CAF50",
-    textAlign: "center",
-    marginVertical: 8,
-    fontWeight: "600",
-  },
-  progressBar: {
-    width: "100%",
-    height: 6,
-    backgroundColor: "#e0e0e0",
-    borderRadius: 3,
-  },
-  progressFill: {
-    height: "100%",
-    backgroundColor: "#4CAF50",
-    borderRadius: 3,
   },
   scrollView: {
     flex: 1,
@@ -341,12 +254,6 @@ const styles = StyleSheet.create({
   grayedOut: {
     opacity: 0.3,
   },
-  requiredScore: {
-    fontSize: 12,
-    color: "#FF6B35",
-    fontWeight: "bold",
-    textAlign: "center",
-  },
   unlockedText: {
     fontSize: 12,
     color: "#4CAF50",
@@ -355,9 +262,9 @@ const styles = StyleSheet.create({
   },
   costContainer: {
     alignItems: 'center',
+    marginTop: 8,
   },
   buyButton: {
-    marginTop: 8,
     backgroundColor: '#FFD700',
     paddingVertical: 6,
     paddingHorizontal: 12,
@@ -369,3 +276,4 @@ const styles = StyleSheet.create({
     color: '#333',
   },
 });
+
