@@ -9,7 +9,8 @@ import {
   TouchableOpacity, 
   Modal, 
   Animated,
-  Dimensions 
+  Dimensions,
+  Easing 
 } from "react-native";
 
 const { width } = Dimensions.get('window');
@@ -31,6 +32,8 @@ export default function Header() {
   const bestTileEmoji = themes[theme][bestTile] || "❓";
   
   const coinPulse = useRef(new Animated.Value(1)).current;
+  const switcherPop = useRef(new Animated.Value(1)).current;
+  const prevSwitcherCount = useRef(switcherCount);
 
   // Coin pulse animation
   useEffect(() => {
@@ -52,6 +55,27 @@ export default function Header() {
     
     return () => pulseAnimation.stop();
   }, [coinPulse]);
+
+  // Switcher pop animation
+  useEffect(() => {
+    if (switcherCount > prevSwitcherCount.current) {
+      Animated.sequence([
+        Animated.timing(switcherPop, {
+          toValue: 1.2,
+          duration: 200,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.spring(switcherPop, {
+          toValue: 1,
+          friction: 4,
+          tension: 40,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+    prevSwitcherCount.current = switcherCount;
+  }, [switcherCount]);
 
   return (
     <>
@@ -75,7 +99,9 @@ export default function Header() {
               onPress={useSwitcher}
               disabled={switcherCount <= 0}
             >
-              <Text style={styles.actionText}>🔑 {switcherCount}</Text>
+              <Animated.View style={{ transform: [{ scale: switcherPop }] }}>
+                <Text style={styles.actionText}>🔑 {switcherCount}</Text>
+              </Animated.View>
             </TouchableOpacity>
             
             <TouchableOpacity onPress={newGame}>
