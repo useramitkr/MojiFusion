@@ -1,10 +1,10 @@
-// Enhanced GameContext.tsx with new features
 import { initBoard, moveBoard } from "@/game/engine";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Audio } from 'expo-av';
+import { useRouter } from "expo-router";
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
-import { Vibration } from "react-native";
 import { THEME_DATA } from "@/game/themes";
+import { loadLevelData, saveLevelData } from "@/utils/gameLevel";
 
 type GameContextType = {
   board: number[][];
@@ -22,6 +22,10 @@ type GameContextType = {
   showTutorial: boolean;
   animatingTiles: Set<string>;
   unlockedThemes: string[];
+  level: number;
+  nextLevelScore: number;
+  progress: number;
+  levelUp: boolean;
   newGame: () => void;
   move: (direction: "up" | "down" | "left" | "right") => void;
   setTheme: (theme: string) => void;
@@ -35,6 +39,7 @@ type GameContextType = {
   dismissTutorial: () => void;
   restartGame: () => void;
   buyTheme: (themeId: string) => boolean;
+  nextLevel: () => void;
 };
 
 const GameContext = createContext<GameContextType | null>(null);
@@ -45,12 +50,7 @@ export const useGame = () => {
   return ctx;
 };
 
-// Special tile types
-export const SPECIAL_TILES = {
-  BOMB: -1,
-  COIN: -2,
-  REWARD: -3,
-};
+export const SPECIAL_TILES = { BOMB: -1, COIN: -2, REWARD: -3 };
 
 export const GameProvider = ({ children }: { children: React.ReactNode }) => {
   const [board, setBoard] = useState<number[][]>(() => initBoard());
@@ -68,11 +68,15 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
   const [showTutorial, setShowTutorial] = useState(false);
   const [animatingTiles, setAnimatingTiles] = useState<Set<string>>(new Set());
   const [unlockedThemes, setUnlockedThemes] = useState<string[]>(['fruits']);
+  const [level, setLevel] = useState(1);
+  const [nextLevelScore, setNextLevelScore] = useState(500);
+  const [progress, setProgress] = useState(0);
+  const [levelUp, setLevelUp] = useState(false);
   const backgroundMusicRef = useRef<Audio.Sound | null>(null);
   const soundsRef = useRef<Record<string, Audio.Sound>>({});
   const lastMoveTimeRef = useRef(0);
+  const router = useRouter();
 
-  // Initialize audio system
   useEffect(() => {
     const initializeAudio = async () => {
       try {
@@ -83,31 +87,27 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
           shouldDuckAndroid: true,
         });
 
-        // Load background music
         if (musicEnabled) {
           const { sound } = await Audio.Sound.createAsync(
-            require('@/assets/music/background.mp3'), // <-- use require
+            require('@/assets/music/background.mp3'),
             { shouldPlay: true, isLooping: true, volume: 0.3 }
           );
           backgroundMusicRef.current = sound;
         }
 
-        // Load sound effects
         const soundFiles = {
           swipe: require('@/assets/music/swipe.mp3'),
           boom: require('@/assets/music/boom.mp3'),
-          // Add other sounds here
         };
 
         for (const [key, file] of Object.entries(soundFiles)) {
           try {
-            const { sound } = await Audio.Sound.createAsync(file); // <-- use file directly, not { uri: file }
+            const { sound } = await Audio.Sound.createAsync(file);
             soundsRef.current[key] = sound;
           } catch (error) {
             console.log(`Could not load ${key} sound:`, error);
           }
         }
-
       } catch (error) {
         console.log("Error initializing audio:", error);
       }
@@ -116,43 +116,29 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
     initializeAudio();
 
     return () => {
-      // Cleanup sounds
       if (backgroundMusicRef.current) {
         backgroundMusicRef.current.unloadAsync();
+        backgroundMusicRef.current = null;
       }
       Object.values(soundsRef.current).forEach(sound => {
         sound.unloadAsync();
       });
     };
-  }, []);
+  }, [musicEnabled]);
 
-  // Load saved data
   useEffect(() => {
     const loadStoredData = async () => {
       try {
-        const storedData = await Promise.all([
-          AsyncStorage.getItem("bestScore"),
-          AsyncStorage.getItem("bestTile"),
-          AsyncStorage.getItem("switcherCount"),
-          AsyncStorage.getItem("undoCount"),
-          AsyncStorage.getItem("coins"),
-          AsyncStorage.getItem("soundEnabled"),
-          AsyncStorage.getItem("musicEnabled"),
-          AsyncStorage.getItem("isFirstTime"),
-          AsyncStorage.getItem("unlockedThemes"),
-        ]);
-
         const [
-          bestScoreStr,
-          bestTileStr,
-          switcherStr,
-          undoStr,
-          coinsStr,
-          soundStr,
-          musicStr,
-          firstTimeStr,
-          unlockedThemesStr
-        ] = storedData;
+          bestScoreStr, bestTileStr, switcherStr, undoStr, coinsStr,
+          soundStr, musicStr, firstTimeStr, unlockedThemesStr, themeStr
+        ] = await Promise.all([
+          AsyncStorage.getItem("bestScore"), AsyncStorage.getItem("bestTile"),
+          AsyncStorage.getItem("switcherCount"), AsyncStorage.getItem("undoCount"),
+          AsyncStorage.getItem("coins"), AsyncStorage.getItem("soundEnabled"),
+          AsyncStorage.getItem("musicEnabled"), AsyncStorage.getItem("isFirstTime"),
+          AsyncStorage.getItem("unlockedThemes"), AsyncStorage.getItem("theme"),
+        ]);
 
         if (bestScoreStr) setBestScore(Number(bestScoreStr));
         if (bestTileStr) setBestTile(Number(bestTileStr));
@@ -161,11 +147,8 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
         if (coinsStr) setCoins(Number(coinsStr));
         if (soundStr !== null) setSoundEnabled(soundStr === 'true');
         if (musicStr !== null) setMusicEnabled(musicStr === 'true');
-
-        if (unlockedThemesStr) {
-          setUnlockedThemes(JSON.parse(unlockedThemesStr));
-        }
-
+        if (unlockedThemesStr) setUnlockedThemes(JSON.parse(unlockedThemesStr));
+        if (themeStr) setTheme(themeStr);
         if (firstTimeStr === null) {
           setIsFirstTime(true);
           setShowTutorial(true);
@@ -173,37 +156,26 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
           setIsFirstTime(false);
         }
 
+        const levelData = await loadLevelData();
+        setLevel(levelData.level);
+        setNextLevelScore(levelData.nextLevelScore);
+        setProgress(levelData.progress);
+        setScore(levelData.progress);
+        if (levelData.progress >= levelData.nextLevelScore) {
+          setLevelUp(true);
+        }
       } catch (error) {
         console.error("Error loading stored data:", error);
       }
     };
-
     loadStoredData();
   }, []);
 
-  // Play sound effect
   const playSound = useCallback(async (type: 'move' | 'merge' | 'switch' | 'success' | 'unlock' | 'swipe' | 'boom' | 'coin' | 'error') => {
     if (!soundEnabled) return;
-
     try {
       if (soundsRef.current[type]) {
         await soundsRef.current[type].replayAsync();
-      } else {
-        // Create programmatic beeps for other sounds
-        const frequencies = {
-          move: 800,
-          merge: 1000,
-          switch: 600,
-          success: 1200,
-          unlock: 1500,
-          coin: 1800,
-          error: 400,
-        };
-
-        if (frequencies[type as keyof typeof frequencies]) {
-          // In a real implementation, you'd use Web Audio API or native sound generation
-          console.log(`Playing ${type} sound at ${frequencies[type as keyof typeof frequencies]}Hz`);
-        }
       }
     } catch (error) {
       console.log("Error playing sound:", error);
@@ -223,21 +195,8 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
     const newMusicState = !musicEnabled;
     setMusicEnabled(newMusicState);
     AsyncStorage.setItem("musicEnabled", String(newMusicState));
-
-    try {
-      if (backgroundMusicRef.current) {
-        if (newMusicState) {
-          await backgroundMusicRef.current.playAsync();
-        } else {
-          await backgroundMusicRef.current.pauseAsync();
-        }
-      }
-    } catch (error) {
-      console.log("Error toggling background music:", error);
-    }
   }, [musicEnabled]);
 
-  // Add coins and save
   const addCoins = useCallback((amount: number) => {
     setCoins(prev => {
       const newCoins = prev + amount;
@@ -247,7 +206,6 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
     playSound('coin');
   }, [playSound]);
 
-  // Spend coins
   const spendCoins = useCallback((amount: number) => {
     if (coins >= amount) {
       setCoins(prev => {
@@ -260,25 +218,16 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
     return false;
   }, [coins]);
   
-  // Buy theme function
   const buyTheme = useCallback((themeId: string): boolean => {
     const themeData = THEME_DATA.find(t => t.id === themeId);
     if (!themeData) {
-      console.error(`Theme with ID ${themeId} not found.`);
       return false;
     }
-
     if (unlockedThemes.includes(themeId)) {
-      console.log(`Theme ${themeId} is already unlocked.`);
       return false;
     }
-    
     if (coins >= themeData.requiredCoins) {
-      setCoins(prevCoins => {
-        const newCoins = prevCoins - themeData.requiredCoins;
-        AsyncStorage.setItem("coins", String(newCoins));
-        return newCoins;
-      });
+      spendCoins(themeData.requiredCoins);
       setUnlockedThemes(prev => {
         const newUnlocked = [...prev, themeId];
         AsyncStorage.setItem("unlockedThemes", JSON.stringify(newUnlocked));
@@ -290,160 +239,109 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
       playSound('error');
       return false;
     }
-  }, [coins, unlockedThemes, playSound]);
+  }, [coins, unlockedThemes, playSound, spendCoins]);
 
-
-  // Check for game over
   const checkGameOver = useCallback((currentBoard: number[][]) => {
-    // Check if board is full
     const isFull = currentBoard.every(row => row.every(cell => cell !== 0));
     if (!isFull) return false;
-
-    // Check for possible moves
     for (let i = 0; i < 4; i++) {
       for (let j = 0; j < 4; j++) {
         const current = currentBoard[i][j];
-        // Check right
-        if (j < 3 && current === currentBoard[i][j + 1]) return false;
-        // Check down
-        if (i < 3 && current === currentBoard[i + 1][j]) return false;
+        if (j < 3 && (current === currentBoard[i][j + 1] || current < 0 || currentBoard[i][j+1] < 0)) return false;
+        if (i < 3 && (current === currentBoard[i + 1][j] || current < 0 || currentBoard[i+1][j] < 0)) return false;
       }
     }
-
     return true;
   }, []);
-
-  // Add special tiles randomly
-  const addSpecialTile = useCallback((board: number[][]) => {
-    if (Math.random() < 0.05) { // 5% chance
-      const emptyTiles: [number, number][] = [];
-      board.forEach((row, i) => {
-        row.forEach((cell, j) => {
-          if (cell === 0) emptyTiles.push([i, j]);
-        });
-      });
-
-      if (emptyTiles.length > 0) {
-        const [i, j] = emptyTiles[Math.floor(Math.random() * emptyTiles.length)];
-        const specialTypes = [SPECIAL_TILES.BOMB, SPECIAL_TILES.COIN, SPECIAL_TILES.REWARD];
-        board[i][j] = specialTypes[Math.floor(Math.random() * specialTypes.length)];
-      }
-    }
-  }, []);
-
-  // Handle special tile effects
-  const handleSpecialTile = useCallback((board: number[][], row: number, col: number, tileType: number) => {
-    const newBoard = [...board].map(r => [...r]);
-
-    switch (tileType) {
-      case SPECIAL_TILES.BOMB:
-        // Clear surrounding tiles
-        playSound('boom');
-        Vibration.vibrate(200);
-        for (let i = Math.max(0, row - 1); i <= Math.min(3, row + 1); i++) {
-          for (let j = Math.max(0, col - 1); j <= Math.min(3, col + 1); j++) {
-            if (newBoard[i][j] > 0) {
-              newBoard[i][j] = 0;
-            }
-          }
-        }
-        break;
-
-      case SPECIAL_TILES.COIN:
-        playSound('coin');
-        addCoins(100);
-        newBoard[row][col] = 0;
-        break;
-
-      case SPECIAL_TILES.REWARD:
-        // This is now handled in the move function
-        break;
-    }
-
-    return newBoard;
-  }, [playSound, addCoins]);
-
-  // Enhanced move function
-  const move = useCallback((direction: "up" | "down" | "left" | "right") => {
+  
+  const move = useCallback(async (direction: "up" | "down" | "left" | "right") => {
     const now = Date.now();
-    if (now - lastMoveTimeRef.current < 100) return; // 100ms throttle
+    if (now - lastMoveTimeRef.current < 100 || isGameOver || levelUp) return;
     lastMoveTimeRef.current = now;
 
-    if (isGameOver) return;
+    playSound('swipe');
+    const { newBoard, gained, specialEffects } = moveBoard(board, direction);
+    const boardChanged = JSON.stringify(board) !== JSON.stringify(newBoard);
 
-    try {
-      playSound('swipe');
+    if (gained > 0 || boardChanged) {
+        if (gained > 0) playSound('merge');
 
-      const result = moveBoard(board, direction);
-      if (!result || !result.newBoard) return;
-
-      const { newBoard, gained, specialEffects } = result;
-      const boardChanged = JSON.stringify(board) !== JSON.stringify(newBoard);
-
-      if (gained > 0 || boardChanged) {
-        if (gained > 0) {
-          playSound('merge');
-          // Convert score to coins (1 coin per 10 points)
-          const coinsEarned = Math.floor(gained / 10);
-          if (coinsEarned > 0) {
-            addCoins(coinsEarned);
-          }
-        }
-
-        const newScore = score + (gained || 0);
-        setBoard(newBoard);
-        setScore(newScore);
-
-        // Check for new special tile combinations
         if (specialEffects && specialEffects.length > 0) {
-          for (const effect of specialEffects) {
-            if (effect.type === 'special_merge' && effect.tile1 === SPECIAL_TILES.REWARD) {
-              // Grant a switcher for every gift combo
-              setSwitcherCount(prev => prev + 1);
-              playSound('unlock');
+            for (const effect of specialEffects) {
+                if (effect.type === 'special_merge' && (effect.tile1 === SPECIAL_TILES.REWARD || effect.tile2 === SPECIAL_TILES.REWARD)) {
+                    setSwitcherCount(prev => {
+                        const newCount = prev + 1;
+                        AsyncStorage.setItem("switcherCount", String(newCount));
+                        return newCount;
+                    });
+                    playSound('unlock');
+                }
             }
-          }
         }
 
-        // Add special tiles occasionally
-        addSpecialTile(newBoard);
+        const newScore = score + gained;
+      
+        if (newScore >= nextLevelScore) {
+            setLevelUp(true);
+            const finalProgress = nextLevelScore;
+            setScore(finalProgress);
+            setProgress(finalProgress);
+            await saveLevelData({ level, nextLevelScore, progress: finalProgress });
+            playSound('success');
+            router.push('/(tabs)/');
+        } else {
+            setBoard(newBoard);
+            setScore(newScore);
+            setProgress(newScore);
+            await saveLevelData({ level, nextLevelScore, progress: newScore });
 
-        // Update best score
-        if (newScore > bestScore) {
-          setBestScore(newScore);
-          AsyncStorage.setItem("bestScore", String(newScore));
-          playSound('success');
+            if (newScore > bestScore) {
+                setBestScore(newScore);
+                AsyncStorage.setItem("bestScore", String(newScore));
+            }
+            const maxTileValue = Math.max(...newBoard.flat().filter(val => val > 0));
+            if (maxTileValue > bestTile) {
+                setBestTile(maxTileValue);
+                AsyncStorage.setItem("bestTile", String(maxTileValue));
+            }
+            if (checkGameOver(newBoard)) setIsGameOver(true);
         }
-
-        // Update best tile
-        const maxTileValue = Math.max(...newBoard.flat().filter(val => val > 0));
-        if (maxTileValue > bestTile) {
-          setBestTile(maxTileValue);
-          AsyncStorage.setItem("bestTile", String(maxTileValue));
-        }
-
-        // Check game over
-        if (checkGameOver(newBoard)) {
-          setIsGameOver(true);
-        }
-      }
-    } catch (error) {
-      console.error("Error during move:", error);
     }
-  }, [board, score, bestScore, bestTile, isGameOver, checkGameOver, playSound, addCoins, addSpecialTile]);
+  }, [board, score, bestScore, bestTile, isGameOver, levelUp, level, nextLevelScore, checkGameOver, playSound, router]);
 
   const newGame = useCallback(() => {
-    const newBoard = initBoard();
-    setBoard(newBoard);
-    setScore(0);
+    setBoard(initBoard());
+    setScore(progress); 
     setIsGameOver(false);
     playSound('success');
-  }, [playSound]);
+  }, [playSound, progress]);
+
+  const nextLevel = useCallback(async () => {
+    const newLevel = level + 1;
+    const newNextLevelScore = 500 * newLevel;
+    
+    setLevel(newLevel);
+    setNextLevelScore(newNextLevelScore);
+    setScore(0);
+    setProgress(0);
+    setLevelUp(false);
+    setBoard(initBoard());
+
+    await saveLevelData({
+      level: newLevel,
+      nextLevelScore: newNextLevelScore,
+      progress: 0,
+    });
+    console.log("Interstitial Ad would show here!");
+  }, [level]);
 
   const restartGame = useCallback(() => {
     setIsGameOver(false);
-    newGame();
-  }, [newGame]);
+    setScore(0);
+    setProgress(0);
+    setBoard(initBoard());
+    saveLevelData({level, nextLevelScore, progress: 0});
+  }, [level, nextLevelScore]);
 
   const dismissTutorial = useCallback(() => {
     setShowTutorial(false);
@@ -453,20 +351,13 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
 
   const switchTile = useCallback((row: number, col: number, newValue: number) => {
     if (switcherCount <= 0) return;
-
-    const newBoard = board.map((boardRow, i) =>
-      boardRow.map((cell, j) =>
-        i === row && j === col ? newValue : cell
-      )
-    );
-
+    const newBoard = board.map((r, i) => r.map((c, j) => (i === row && j === col ? newValue : c)));
     setBoard(newBoard);
     setSwitcherCount(prev => {
-      const newCount = Math.max(0, prev - 1);
+      const newCount = prev - 1;
       AsyncStorage.setItem("switcherCount", String(newCount));
       return newCount;
     });
-
     playSound('switch');
   }, [board, switcherCount, playSound]);
 
@@ -475,39 +366,27 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
 
     const newBoard = [...board].map(row => [...row]);
     const occupiedTiles = [];
-
     for (let i = 0; i < newBoard.length; i++) {
       for (let j = 0; j < newBoard[i].length; j++) {
-        if (newBoard[i][j] !== 0) {
-          occupiedTiles.push({ row: i, col: j });
-        }
+        if (newBoard[i][j] !== 0) occupiedTiles.push({ row: i, col: j });
       }
     }
-
     if (occupiedTiles.length === 0) return;
-
     const shuffledTiles = occupiedTiles.sort(() => 0.5 - Math.random());
     const tilesToClear = Math.ceil(shuffledTiles.length / 2);
-
     for (let i = 0; i < shuffledTiles.length; i++) {
       const { row, col } = shuffledTiles[i];
-      if (i < tilesToClear) {
-        newBoard[row][col] = 0;
-      } else {
-        newBoard[row][col] = 2;
-      }
+      newBoard[row][col] = i < tilesToClear ? 0 : 2;
     }
-
     setBoard(newBoard);
     setSwitcherCount(prev => {
-      const newCount = Math.max(0, prev - 1);
+      const newCount = prev - 1;
       AsyncStorage.setItem("switcherCount", String(newCount));
       return newCount;
     });
-
     playSound('switch');
   }, [board, switcherCount, playSound]);
-
+  
   const handleSetTheme = useCallback((newTheme: string) => {
     if (typeof newTheme === 'string' && newTheme.trim().length > 0) {
       setTheme(newTheme);
@@ -519,37 +398,16 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
   return (
     <GameContext.Provider
       value={{
-        board,
-        score,
-        bestScore,
-        bestTile,
-        theme,
-        switcherCount,
-        undoCount,
-        coins,
-        soundEnabled,
-        musicEnabled,
-        isFirstTime,
-        isGameOver,
-        showTutorial,
-        animatingTiles,
-        unlockedThemes,
-        newGame,
-        move,
-        setTheme: handleSetTheme,
-        switchTile,
-        toggleSound,
-        toggleMusic,
-        playSound,
-        useSwitcher,
-        addCoins,
-        spendCoins,
-        dismissTutorial,
-        restartGame,
-        buyTheme,
+        board, score, bestScore, bestTile, theme, switcherCount, undoCount, coins,
+        soundEnabled, musicEnabled, isFirstTime, isGameOver, showTutorial,
+        animatingTiles, unlockedThemes, level, nextLevelScore, progress, levelUp,
+        newGame, move, setTheme: handleSetTheme, switchTile, toggleSound,
+        toggleMusic, playSound, useSwitcher, addCoins, spendCoins,
+        dismissTutorial, restartGame, buyTheme, nextLevel
       }}
     >
       {children}
     </GameContext.Provider>
   );
 };
+
