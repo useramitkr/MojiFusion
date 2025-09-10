@@ -69,7 +69,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
   const [animatingTiles, setAnimatingTiles] = useState<Set<string>>(new Set());
   const [unlockedThemes, setUnlockedThemes] = useState<string[]>(['fruits']);
   const [level, setLevel] = useState(1);
-  const [nextLevelScore, setNextLevelScore] = useState(500);
+  const [nextLevelScore, setNextLevelScore] = useState(200);
   const [progress, setProgress] = useState(0);
   const [levelUp, setLevelUp] = useState(false);
   const backgroundMusicRef = useRef<Audio.Sound | null>(null);
@@ -318,7 +318,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
 
   const nextLevel = useCallback(async () => {
     const newLevel = level + 1;
-    const newNextLevelScore = 500 * newLevel;
+    const newNextLevelScore = 200 * newLevel;
     
     setLevel(newLevel);
     setNextLevelScore(newNextLevelScore);
