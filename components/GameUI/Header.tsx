@@ -11,6 +11,7 @@ import {
   Dimensions,
   Easing
 } from "react-native";
+import InlineAd from "../AdmobAd/InlineAd";
 
 const { width } = Dimensions.get('window');
 
@@ -139,6 +140,7 @@ export default function Header() {
             </View>
           </TouchableOpacity>
         </Modal>
+        <InlineAd />
       </View>
     </>
   );
