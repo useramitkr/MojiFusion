@@ -6,7 +6,7 @@ import React, { useState } from 'react';
 import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
 
 const iosAdmobBanner = "ca-app-pub-12345678910/12345678910";
-const androidAdmobBanner = "ca-app-pub-12345678910/12345678910";
+const androidAdmobBanner = "ca-app-pub-3010808812913571/3045657970";
 const productionID = Device.osName === 'Android' ? androidAdmobBanner : iosAdmobBanner;
 
 const InlineAd = () => {
