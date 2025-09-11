@@ -44,6 +44,7 @@ type GameContextType = {
   useSwitcher: () => void;
   resumeWithSwitcher: () => void;
   addCoins: (amount: number) => void;
+  addKey: () => void;
   spendCoins: (amount: number) => boolean;
   dismissTutorial: () => void;
   restartGame: () => void;
@@ -178,7 +179,18 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
       AsyncStorage.setItem("coins", String(newCoins));
       return newCoins;
     });
-    playSound('coin');
+    if (amount > 0) {
+        playSound('coin');
+    }
+  }, [playSound]);
+  
+  const addKey = useCallback(() => {
+    setSwitcherCount(prev => {
+      const newCount = prev + 1;
+      AsyncStorage.setItem("switcherCount", String(newCount));
+      return newCount;
+    });
+    playSound('unlock');
   }, [playSound]);
 
   const spendCoins = useCallback((amount: number) => {
@@ -212,34 +224,24 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
   }, [coins, unlockedThemes, playSound, spendCoins]);
 
   const checkGameOver = useCallback((currentBoard: number[][]) => {
-    // 1. Check for any empty cells
     const isFull = currentBoard.every(row => row.every(cell => cell !== 0));
     if (!isFull) {
       return false;
     }
 
-    // 2. Check for possible merges (horizontally and vertically)
     for (let i = 0; i < 4; i++) {
         for (let j = 0; j < 4; j++) {
             const current = currentBoard[i][j];
-
-            // Check right neighbor
             if (j < 3) {
                 const right = currentBoard[i][j + 1];
-                if (current > 0 && current === right) return false; // Same number tiles can merge
-                if (current < 0 && right < 0) return false; // Two special tiles can merge
+                if ((current > 0 && current === right) || (current < 0 && right < 0)) return false; 
             }
-            
-            // Check bottom neighbor
             if (i < 3) {
                 const bottom = currentBoard[i + 1][j];
-                if (current > 0 && current === bottom) return false; // Same number tiles can merge
-                if (current < 0 && bottom < 0) return false; // Two special tiles can merge
+                if ((current > 0 && current === bottom) || (current < 0 && bottom < 0)) return false; 
             }
         }
     }
-
-    // 3. If board is full and no merges are possible, game is over.
     return true;
   }, []);
   
@@ -249,11 +251,10 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
     lastMoveTimeRef.current = now;
 
     playSound('swipe');
-    const { newBoard, gained, specialEffects, newAnimations, coinsGained } = moveBoard(board, direction);
+    const { newBoard, gained, specialEffects, newAnimations, coinsGained: specialCoins } = moveBoard(board, direction);
     const boardChanged = JSON.stringify(board) !== JSON.stringify(newBoard);
 
     if (newAnimations && newAnimations.length > 0) setFloatingAnimations(prev => [...prev, ...newAnimations]);
-    if (coinsGained > 0) addCoins(coinsGained);
 
     if (gained > 0 || boardChanged) {
         if (gained > 0) playSound('merge');
@@ -270,8 +271,16 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
                 }
             }
         }
+        
+        const oldScore = score;
+        const newScore = oldScore + gained;
+        
+        const coinsFromScore = Math.floor(newScore / 10) - Math.floor(oldScore / 10);
+        const totalCoinsGained = specialCoins + coinsFromScore;
+        if (totalCoinsGained > 0) {
+          addCoins(totalCoinsGained);
+        }
 
-        const newScore = score + gained;
         if (newScore >= nextLevelScore) {
             setLevelUp(true);
             const finalProgress = nextLevelScore;
@@ -300,7 +309,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
             setIsGameOver(true);
         }
     } else {
-        if (checkGameOver(newBoard)) {
+        if (checkGameOver(board)) {
             setIsGameOver(true);
         }
     }
@@ -312,10 +321,12 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
 
   const newGame = useCallback(() => {
     setBoard(initBoard());
-    setScore(progress); 
+    setScore(0); 
+    setProgress(0);
     setIsGameOver(false);
+    saveLevelData({level, nextLevelScore, progress: 0});
     playSound('success');
-  }, [playSound, progress]);
+  }, [playSound, level, nextLevelScore]);
 
   const nextLevel = useCallback(async () => {
     const newLevel = level + 1;
@@ -399,7 +410,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
         animatingTiles, unlockedThemes, level, nextLevelScore, progress, levelUp,
         floatingAnimations, newGame, move, setTheme: handleSetTheme, switchTile, toggleSound,
         toggleMusic, playSound, useSwitcher, addCoins, spendCoins, dismissTutorial,
-        restartGame, buyTheme, nextLevel, removeFloatingAnimation, resumeWithSwitcher
+        restartGame, buyTheme, nextLevel, removeFloatingAnimation, resumeWithSwitcher, addKey
       }}
     >
       {children}
