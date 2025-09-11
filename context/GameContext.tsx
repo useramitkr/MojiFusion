@@ -6,6 +6,13 @@ import { Audio } from 'expo-av';
 import { useRouter } from "expo-router";
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 
+type FloatingAnimationType = {
+  id: string;
+  type: 'key' | 'coin' | 'fire';
+  amount?: number;
+  position: { row: number; col: number };
+};
+
 type GameContextType = {
   board: number[][];
   score: number;
@@ -26,6 +33,7 @@ type GameContextType = {
   nextLevelScore: number;
   progress: number;
   levelUp: boolean;
+  floatingAnimations: FloatingAnimationType[];
   newGame: () => void;
   move: (direction: "up" | "down" | "left" | "right") => void;
   setTheme: (theme: string) => void;
@@ -40,6 +48,7 @@ type GameContextType = {
   restartGame: () => void;
   buyTheme: (themeId: string) => boolean;
   nextLevel: () => void;
+  removeFloatingAnimation: (id: string) => void;
 };
 
 const GameContext = createContext<GameContextType | null>(null);
@@ -72,6 +81,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
   const [nextLevelScore, setNextLevelScore] = useState(200);
   const [progress, setProgress] = useState(0);
   const [levelUp, setLevelUp] = useState(false);
+  const [floatingAnimations, setFloatingAnimations] = useState<FloatingAnimationType[]>([]);
   const backgroundMusicRef = useRef<Audio.Sound | null>(null);
   const soundsRef = useRef<Record<string, Audio.Sound>>({});
   const lastMoveTimeRef = useRef(0);
@@ -80,26 +90,12 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const initializeAudio = async () => {
       try {
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: false,
-          staysActiveInBackground: false,
-          playsInSilentModeIOS: true,
-          shouldDuckAndroid: true,
-        });
-
+        await Audio.setAudioModeAsync({ allowsRecordingIOS: false, staysActiveInBackground: false, playsInSilentModeIOS: true, shouldDuckAndroid: true });
         if (musicEnabled) {
-          const { sound } = await Audio.Sound.createAsync(
-            require('@/assets/music/background.mp3'),
-            { shouldPlay: true, isLooping: true, volume: 0.3 }
-          );
+          const { sound } = await Audio.Sound.createAsync(require('@/assets/music/background.mp3'), { shouldPlay: true, isLooping: true, volume: 0.3 });
           backgroundMusicRef.current = sound;
         }
-
-        const soundFiles = {
-          swipe: require('@/assets/music/swipe.mp3'),
-          boom: require('@/assets/music/boom.mp3'),
-        };
-
+        const soundFiles = { swipe: require('@/assets/music/swipe.mp3'), boom: require('@/assets/music/boom.mp3') };
         for (const [key, file] of Object.entries(soundFiles)) {
           try {
             const { sound } = await Audio.Sound.createAsync(file);
@@ -112,34 +108,24 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
         console.log("Error initializing audio:", error);
       }
     };
-
     initializeAudio();
-
     return () => {
       if (backgroundMusicRef.current) {
         backgroundMusicRef.current.unloadAsync();
         backgroundMusicRef.current = null;
       }
-      Object.values(soundsRef.current).forEach(sound => {
-        sound.unloadAsync();
-      });
+      Object.values(soundsRef.current).forEach(sound => sound.unloadAsync());
     };
   }, [musicEnabled]);
 
   useEffect(() => {
     const loadStoredData = async () => {
       try {
-        const [
-          bestScoreStr, bestTileStr, switcherStr, undoStr, coinsStr,
-          soundStr, musicStr, firstTimeStr, unlockedThemesStr, themeStr
-        ] = await Promise.all([
-          AsyncStorage.getItem("bestScore"), AsyncStorage.getItem("bestTile"),
-          AsyncStorage.getItem("switcherCount"), AsyncStorage.getItem("undoCount"),
-          AsyncStorage.getItem("coins"), AsyncStorage.getItem("soundEnabled"),
-          AsyncStorage.getItem("musicEnabled"), AsyncStorage.getItem("isFirstTime"),
+        const [bestScoreStr, bestTileStr, switcherStr, undoStr, coinsStr, soundStr, musicStr, firstTimeStr, unlockedThemesStr, themeStr] = await Promise.all([
+          AsyncStorage.getItem("bestScore"), AsyncStorage.getItem("bestTile"), AsyncStorage.getItem("switcherCount"), AsyncStorage.getItem("undoCount"),
+          AsyncStorage.getItem("coins"), AsyncStorage.getItem("soundEnabled"), AsyncStorage.getItem("musicEnabled"), AsyncStorage.getItem("isFirstTime"),
           AsyncStorage.getItem("unlockedThemes"), AsyncStorage.getItem("theme"),
         ]);
-
         if (bestScoreStr) setBestScore(Number(bestScoreStr));
         if (bestTileStr) setBestTile(Number(bestTileStr));
         if (switcherStr) setSwitcherCount(Number(switcherStr));
@@ -149,21 +135,13 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
         if (musicStr !== null) setMusicEnabled(musicStr === 'true');
         if (unlockedThemesStr) setUnlockedThemes(JSON.parse(unlockedThemesStr));
         if (themeStr) setTheme(themeStr);
-        if (firstTimeStr === null) {
-          setIsFirstTime(true);
-          setShowTutorial(true);
-        } else {
-          setIsFirstTime(false);
-        }
-
+        if (firstTimeStr === null) { setIsFirstTime(true); setShowTutorial(true); } else { setIsFirstTime(false); }
         const levelData = await loadLevelData();
         setLevel(levelData.level);
         setNextLevelScore(levelData.nextLevelScore);
         setProgress(levelData.progress);
         setScore(levelData.progress);
-        if (levelData.progress >= levelData.nextLevelScore) {
-          setLevelUp(true);
-        }
+        if (levelData.progress >= levelData.nextLevelScore) setLevelUp(true);
       } catch (error) {
         console.error("Error loading stored data:", error);
       }
@@ -174,9 +152,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
   const playSound = useCallback(async (type: 'move' | 'merge' | 'switch' | 'success' | 'unlock' | 'swipe' | 'boom' | 'coin' | 'error') => {
     if (!soundEnabled) return;
     try {
-      if (soundsRef.current[type]) {
-        await soundsRef.current[type].replayAsync();
-      }
+      if (soundsRef.current[type]) await soundsRef.current[type].replayAsync();
     } catch (error) {
       console.log("Error playing sound:", error);
     }
@@ -186,9 +162,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
     const newSoundState = !soundEnabled;
     setSoundEnabled(newSoundState);
     AsyncStorage.setItem("soundEnabled", String(newSoundState));
-    if (newSoundState) {
-      playSound('success');
-    }
+    if (newSoundState) playSound('success');
   }, [soundEnabled, playSound]);
 
   const toggleMusic = useCallback(async () => {
@@ -220,12 +194,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
   
   const buyTheme = useCallback((themeId: string): boolean => {
     const themeData = THEME_DATA.find(t => t.id === themeId);
-    if (!themeData) {
-      return false;
-    }
-    if (unlockedThemes.includes(themeId)) {
-      return false;
-    }
+    if (!themeData || unlockedThemes.includes(themeId)) return false;
     if (coins >= themeData.requiredCoins) {
       spendCoins(themeData.requiredCoins);
       setUnlockedThemes(prev => {
@@ -245,11 +214,11 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
     const isFull = currentBoard.every(row => row.every(cell => cell !== 0));
     if (!isFull) return false;
     for (let i = 0; i < 4; i++) {
-      for (let j = 0; j < 4; j++) {
-        const current = currentBoard[i][j];
-        if (j < 3 && (current === currentBoard[i][j + 1] || current < 0 || currentBoard[i][j+1] < 0)) return false;
-        if (i < 3 && (current === currentBoard[i + 1][j] || current < 0 || currentBoard[i+1][j] < 0)) return false;
-      }
+        for (let j = 0; j < 4; j++) {
+            const current = currentBoard[i][j];
+            if (j < 3 && (current === currentBoard[i][j + 1] || current < 0 || currentBoard[i][j+1] < 0)) return false;
+            if (i < 3 && (current === currentBoard[i + 1][j] || current < 0 || currentBoard[i+1][j] < 0)) return false;
+        }
     }
     return true;
   }, []);
@@ -260,8 +229,11 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
     lastMoveTimeRef.current = now;
 
     playSound('swipe');
-    const { newBoard, gained, specialEffects } = moveBoard(board, direction);
+    const { newBoard, gained, specialEffects, newAnimations, coinsGained } = moveBoard(board, direction);
     const boardChanged = JSON.stringify(board) !== JSON.stringify(newBoard);
+
+    if (newAnimations && newAnimations.length > 0) setFloatingAnimations(prev => [...prev, ...newAnimations]);
+    if (coinsGained > 0) addCoins(coinsGained);
 
     if (gained > 0 || boardChanged) {
         if (gained > 0) playSound('merge');
@@ -280,7 +252,6 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
         }
 
         const newScore = score + gained;
-      
         if (newScore >= nextLevelScore) {
             setLevelUp(true);
             const finalProgress = nextLevelScore;
@@ -294,7 +265,6 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
             setScore(newScore);
             setProgress(newScore);
             await saveLevelData({ level, nextLevelScore, progress: newScore });
-
             if (newScore > bestScore) {
                 setBestScore(newScore);
                 AsyncStorage.setItem("bestScore", String(newScore));
@@ -304,10 +274,16 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
                 setBestTile(maxTileValue);
                 AsyncStorage.setItem("bestTile", String(maxTileValue));
             }
-            if (checkGameOver(newBoard)) setIsGameOver(true);
         }
     }
-  }, [board, score, bestScore, bestTile, isGameOver, levelUp, level, nextLevelScore, checkGameOver, playSound, router]);
+    if (checkGameOver(newBoard)) {
+        setIsGameOver(true);
+    }
+  }, [board, score, bestScore, bestTile, isGameOver, levelUp, level, nextLevelScore, checkGameOver, playSound, router, addCoins]);
+
+  const removeFloatingAnimation = (id: string) => {
+    setFloatingAnimations(prev => prev.filter(anim => anim.id !== id));
+  };
 
   const newGame = useCallback(() => {
     setBoard(initBoard());
@@ -319,20 +295,13 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
   const nextLevel = useCallback(async () => {
     const newLevel = level + 1;
     const newNextLevelScore = 200 * newLevel;
-    
     setLevel(newLevel);
     setNextLevelScore(newNextLevelScore);
     setScore(0);
     setProgress(0);
     setLevelUp(false);
     setBoard(initBoard());
-
-    await saveLevelData({
-      level: newLevel,
-      nextLevelScore: newNextLevelScore,
-      progress: 0,
-    });
-    console.log("Interstitial Ad would show here!");
+    await saveLevelData({ level: newLevel, nextLevelScore: newNextLevelScore, progress: 0 });
   }, [level]);
 
   const restartGame = useCallback(() => {
@@ -363,14 +332,9 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
 
   const useSwitcher = useCallback(() => {
     if (switcherCount <= 0) return;
-
     const newBoard = [...board].map(row => [...row]);
     const occupiedTiles = [];
-    for (let i = 0; i < newBoard.length; i++) {
-      for (let j = 0; j < newBoard[i].length; j++) {
-        if (newBoard[i][j] !== 0) occupiedTiles.push({ row: i, col: j });
-      }
-    }
+    for (let i = 0; i < newBoard.length; i++) for (let j = 0; j < newBoard[i].length; j++) if (newBoard[i][j] !== 0) occupiedTiles.push({ row: i, col: j });
     if (occupiedTiles.length === 0) return;
     const shuffledTiles = occupiedTiles.sort(() => 0.5 - Math.random());
     const tilesToClear = Math.ceil(shuffledTiles.length / 2);
@@ -401,13 +365,12 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
         board, score, bestScore, bestTile, theme, switcherCount, undoCount, coins,
         soundEnabled, musicEnabled, isFirstTime, isGameOver, showTutorial,
         animatingTiles, unlockedThemes, level, nextLevelScore, progress, levelUp,
-        newGame, move, setTheme: handleSetTheme, switchTile, toggleSound,
-        toggleMusic, playSound, useSwitcher, addCoins, spendCoins,
-        dismissTutorial, restartGame, buyTheme, nextLevel
+        floatingAnimations, newGame, move, setTheme: handleSetTheme, switchTile, toggleSound,
+        toggleMusic, playSound, useSwitcher, addCoins, spendCoins, dismissTutorial,
+        restartGame, buyTheme, nextLevel, removeFloatingAnimation
       }}
     >
       {children}
     </GameContext.Provider>
   );
 };
-
