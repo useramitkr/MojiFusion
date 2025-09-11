@@ -1,7 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { initBoard, moveBoard } from "@/game/engine";
 import { THEME_DATA } from "@/game/themes";
-import { loadLevelData, saveLevelData } from "@/utils/gameLevel";
+import { saveUserProgress, loadUserProgress } from "@/utils/userProgress";
+import { saveGameState, loadGameState } from "@/utils/gameState";
 import { Audio } from 'expo-av';
 import { useRouter } from "expo-router";
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
@@ -123,11 +124,24 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const loadStoredData = async () => {
       try {
+        // Load persistent user progress (level, nextLevelScore, overall progress)
+        const userProgress = await loadUserProgress();
+        setLevel(userProgress.level);
+        setNextLevelScore(userProgress.nextLevelScore);
+        setProgress(userProgress.progress);
+
+        // Load current game state (board and current game score)
+        const gameState = await loadGameState();
+        setBoard(gameState.board);
+        setScore(gameState.score);
+
+        // Load other game data
         const [bestScoreStr, bestTileStr, switcherStr, undoStr, coinsStr, soundStr, musicStr, firstTimeStr, unlockedThemesStr, themeStr] = await Promise.all([
           AsyncStorage.getItem("bestScore"), AsyncStorage.getItem("bestTile"), AsyncStorage.getItem("switcherCount"), AsyncStorage.getItem("undoCount"),
           AsyncStorage.getItem("coins"), AsyncStorage.getItem("soundEnabled"), AsyncStorage.getItem("musicEnabled"), AsyncStorage.getItem("isFirstTime"),
           AsyncStorage.getItem("unlockedThemes"), AsyncStorage.getItem("theme"),
         ]);
+        
         if (bestScoreStr) setBestScore(Number(bestScoreStr));
         if (bestTileStr) setBestTile(Number(bestTileStr));
         if (switcherStr) setSwitcherCount(Number(switcherStr));
@@ -138,12 +152,11 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
         if (unlockedThemesStr) setUnlockedThemes(JSON.parse(unlockedThemesStr));
         if (themeStr) setTheme(themeStr);
         if (firstTimeStr === null) { setIsFirstTime(true); setShowTutorial(true); } else { setIsFirstTime(false); }
-        const levelData = await loadLevelData();
-        setLevel(levelData.level);
-        setNextLevelScore(levelData.nextLevelScore);
-        setProgress(levelData.progress);
-        setScore(levelData.progress);
-        if (levelData.progress >= levelData.nextLevelScore) setLevelUp(true);
+
+        // Check if level up should be triggered
+        if (userProgress.progress >= userProgress.nextLevelScore) {
+          setLevelUp(true);
+        }
       } catch (error) {
         console.error("Error loading stored data:", error);
       }
@@ -274,6 +287,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
         
         const oldScore = score;
         const newScore = oldScore + gained;
+        const newTotalProgress = progress + gained;
         
         const coinsFromScore = Math.floor(newScore / 10) - Math.floor(oldScore / 10);
         const totalCoinsGained = specialCoins + coinsFromScore;
@@ -281,19 +295,27 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
           addCoins(totalCoinsGained);
         }
 
-        if (newScore >= nextLevelScore) {
+        // Check if player has reached the next level
+        if (newTotalProgress >= nextLevelScore) {
             setLevelUp(true);
-            const finalProgress = nextLevelScore;
-            setScore(finalProgress);
+            const finalProgress = newTotalProgress;
+            setScore(newScore);
             setProgress(finalProgress);
-            await saveLevelData({ level, nextLevelScore, progress: finalProgress });
+            // Save both game state and user progress
+            await saveGameState({ board: newBoard, score: newScore });
+            await saveUserProgress({ level, nextLevelScore, progress: finalProgress });
             playSound('success');
             router.push('/(tabs)');
         } else {
+            // Normal gameplay - update everything
             setBoard(newBoard);
             setScore(newScore);
-            setProgress(newScore);
-            await saveLevelData({ level, nextLevelScore, progress: newScore });
+            setProgress(newTotalProgress);
+            
+            // Save both game state and user progress
+            await saveGameState({ board: newBoard, score: newScore });
+            await saveUserProgress({ level, nextLevelScore, progress: newTotalProgress });
+            
             if (newScore > bestScore) {
                 setBestScore(newScore);
                 AsyncStorage.setItem("bestScore", String(newScore));
@@ -313,40 +335,51 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
             setIsGameOver(true);
         }
     }
-  }, [board, score, bestScore, bestTile, isGameOver, levelUp, level, nextLevelScore, checkGameOver, playSound, router, addCoins]);
+  }, [board, score, progress, bestScore, bestTile, isGameOver, levelUp, level, nextLevelScore, checkGameOver, playSound, router, addCoins]);
 
   const removeFloatingAnimation = (id: string) => {
     setFloatingAnimations(prev => prev.filter(anim => anim.id !== id));
   };
 
-  const newGame = useCallback(() => {
-    setBoard(initBoard());
-    setScore(0); 
-    setProgress(0);
+  // Fixed newGame function - only resets current game session, not user progress
+  const newGame = useCallback(async () => {
+    const newBoard = initBoard();
+    setBoard(newBoard);
+    setScore(0); // Reset current game score
     setIsGameOver(false);
-    saveLevelData({level, nextLevelScore, progress: 0});
+    
+    // Save only the game state (board and current score), NOT the user progress
+    await saveGameState({ board: newBoard, score: 0 });
+    
     playSound('success');
-  }, [playSound, level, nextLevelScore]);
+  }, [playSound]);
 
   const nextLevel = useCallback(async () => {
     const newLevel = level + 1;
     const newNextLevelScore = 200 * newLevel;
+    const newBoard = initBoard();
+    
     setLevel(newLevel);
     setNextLevelScore(newNextLevelScore);
     setScore(0);
-    setProgress(0);
+    setProgress(0); // Reset progress for the new level
     setLevelUp(false);
-    setBoard(initBoard());
-    await saveLevelData({ level: newLevel, nextLevelScore: newNextLevelScore, progress: 0 });
+    setBoard(newBoard);
+    
+    // Save both user progress (with new level) and game state (fresh board)
+    await saveUserProgress({ level: newLevel, nextLevelScore: newNextLevelScore, progress: 0 });
+    await saveGameState({ board: newBoard, score: 0 });
   }, [level]);
 
-  const restartGame = useCallback(() => {
+  const restartGame = useCallback(async () => {
+    const newBoard = initBoard();
     setIsGameOver(false);
     setScore(0);
-    setProgress(0);
-    setBoard(initBoard());
-    saveLevelData({level, nextLevelScore, progress: 0});
-  }, [level, nextLevelScore]);
+    setBoard(newBoard);
+    
+    // Save the game state but keep user progress intact
+    await saveGameState({ board: newBoard, score: 0 });
+  }, []);
 
   const dismissTutorial = useCallback(() => {
     setShowTutorial(false);
@@ -363,10 +396,12 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
       AsyncStorage.setItem("switcherCount", String(newCount));
       return newCount;
     });
+    // Save the updated board state
+    saveGameState({ board: newBoard, score });
     playSound('switch');
-  }, [board, switcherCount, playSound]);
+  }, [board, switcherCount, score, playSound]);
 
-  const useSwitcher = useCallback(() => {
+  const useSwitcher = useCallback(async () => {
     if (switcherCount <= 0) return;
     const newBoard = [...board].map(row => [...row]);
     const occupiedTiles = [];
@@ -384,8 +419,10 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
       AsyncStorage.setItem("switcherCount", String(newCount));
       return newCount;
     });
+    // Save the updated board state
+    await saveGameState({ board: newBoard, score });
     playSound('switch');
-  }, [board, switcherCount, playSound]);
+  }, [board, switcherCount, score, playSound]);
 
   const resumeWithSwitcher = useCallback(() => {
     if (switcherCount > 0) {
@@ -417,4 +454,3 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
     </GameContext.Provider>
   );
 };
-
