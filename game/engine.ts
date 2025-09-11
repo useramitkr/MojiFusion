@@ -5,7 +5,7 @@ export const GRID_SIZE = 4;
 export const SPECIAL_TILES = {
   BOMB: -1,
   COIN: -2,
-  REWARD: -3,
+  REWARD: -3, // This is the key emoji
 };
 
 export function initBoard(): number[][] {
@@ -124,18 +124,16 @@ function moveLeft(board: number[][]): { newBoard: number[][]; gained: number; sp
                         const position = { row: rowIndex, col: merged.length - 1 };
                         specialEffects.push({ type: 'special_merge', tile1: current, tile2: next, result: specialResult, bonus: specialResult });
                         
-                        if (current === SPECIAL_TILES.REWARD && next === SPECIAL_TILES.REWARD) {
+                        // Prioritize key animation
+                        if (current === SPECIAL_TILES.REWARD || next === SPECIAL_TILES.REWARD) {
                             newAnimations.push({ id: `anim_${Date.now()}_${Math.random()}`, type: 'key', position });
-                        }
-                        if ((current === SPECIAL_TILES.COIN && next === SPECIAL_TILES.BOMB) || (current === SPECIAL_TILES.BOMB && next === SPECIAL_TILES.COIN)) {
-                            coinsGained += 50;
-                            newAnimations.push({ id: `anim_${Date.now()}_${Math.random()}`, type: 'coin', amount: 50, position });
-                        }
-                        if (current === SPECIAL_TILES.COIN && next === SPECIAL_TILES.COIN) {
+                        } else if (current === SPECIAL_TILES.COIN && next === SPECIAL_TILES.COIN) {
                             coinsGained += 100;
                             newAnimations.push({ id: `anim_${Date.now()}_${Math.random()}`, type: 'coin', amount: 100, position });
-                        }
-                        if (current === SPECIAL_TILES.BOMB && next === SPECIAL_TILES.BOMB) {
+                        } else if ((current === SPECIAL_TILES.COIN && next === SPECIAL_TILES.BOMB) || (current === SPECIAL_TILES.BOMB && next === SPECIAL_TILES.COIN)) {
+                            coinsGained += 50;
+                            newAnimations.push({ id: `anim_${Date.now()}_${Math.random()}`, type: 'coin', amount: 50, position });
+                        } else if (current === SPECIAL_TILES.BOMB && next === SPECIAL_TILES.BOMB) {
                              newAnimations.push({ id: `anim_${Date.now()}_${Math.random()}`, type: 'fire', position });
                         }
                         i++;
@@ -204,4 +202,3 @@ export function moveBoard(
     return { newBoard: board, gained: 0, specialEffects: [], newAnimations: [], coinsGained: 0 };
   }
 }
-

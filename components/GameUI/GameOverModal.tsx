@@ -18,10 +18,11 @@ type Props = {
   visible: boolean;
   onRestart: () => void;
   onNewGame: () => void;
+  onResumeWithSwitcher: () => void;
 };
 
-export default function GameOverModal({ visible, onRestart, onNewGame }: Props) {
-  const { score, bestScore, coins, playSound } = useGame();
+export default function GameOverModal({ visible, onRestart, onNewGame, onResumeWithSwitcher }: Props) {
+  const { score, bestScore, coins, playSound, switcherCount } = useGame();
   
   // Animation values
   const scaleValue = useRef(new Animated.Value(0)).current;
@@ -267,44 +268,38 @@ export default function GameOverModal({ visible, onRestart, onNewGame }: Props) 
 
             {/* Messages */}
             <View style={styles.messageSection}>
-              {score >= 10000 && (
-                <Text style={styles.achievementText}>🌟 Amazing! You scored over 10,000!</Text>
-              )}
-              {score >= 5000 && score < 10000 && (
-                <Text style={styles.achievementText}>🎉 Great job! You&apos;re getting better!</Text>
-              )}
-              {score < 5000 && (
-                <Text style={styles.encouragementText}>Keep practicing! You&apos;ll improve with time! 💪</Text>
-              )}
+                <Text style={styles.encouragementText}>No more moves! 😥</Text>
             </View>
 
             {/* Action Buttons */}
             <View style={styles.buttonSection}>
               <TouchableOpacity
-                style={styles.primaryButton}
+                style={[styles.primaryButton, switcherCount === 0 && styles.disabledButton]}
+                onPress={() => {
+                  playSound('success');
+                  onResumeWithSwitcher();
+                }}
+                disabled={switcherCount === 0}
+              >
+                <LinearGradient
+                  colors={switcherCount > 0 ? ['#4CAF50', '#45A049'] : ['#BDBDBD', '#9E9E9E']}
+                  style={styles.buttonGradient}
+                >
+                  <Text style={styles.buttonEmoji}>🔑</Text>
+                  <Text style={styles.primaryButtonText}>Resume with 1 key</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={styles.secondaryButton}
                 onPress={() => {
                   playSound('success');
                   onNewGame();
                 }}
               >
-                <LinearGradient
-                  colors={['#4CAF50', '#45A049']}
-                  style={styles.buttonGradient}
-                >
-                  <Text style={styles.buttonEmoji}>🎮</Text>
-                  <Text style={styles.primaryButtonText}>New Game</Text>
-                </LinearGradient>
+                <Text style={styles.secondaryButtonText}>🎮 New Game</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.secondaryButton}
-                onPress={() => {
-                  playSound('success');
-                  onRestart();
-                }}
-              >
-                <Text style={styles.secondaryButtonText}>🔄 Try Again</Text>
-              </TouchableOpacity>
             </View>
           </LinearGradient>
         </Animated.View>
@@ -441,6 +436,9 @@ const styles = StyleSheet.create({
   primaryButton: {
     borderRadius: 16,
     overflow: "hidden",
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
   buttonGradient: {
     flexDirection: "row",

@@ -111,10 +111,11 @@ export default function Header() {
             <Text style={styles.statLabel}>Score</Text>
             <Text style={styles.statValue}>{score.toLocaleString()}</Text>
           </View>
-          {/* <View style={styles.statBox}>
+          {/* Best Score  */}
+          <View style={styles.statBox}>
                 <Text style={styles.statLabel}>Best</Text>
                 <Text style={styles.statValue}>{bestScore.toLocaleString()}</Text>
-            </View> */}
+            </View>
           {/* Earned Coins  */}
           <Animated.View style={[styles.statBox, { transform: [{ scale: coinPulse }] }]}>
             <Text style={styles.statLabel}>Coins</Text>
@@ -154,7 +155,7 @@ const styles = StyleSheet.create({
   statBox: { flex: 1, alignItems: "center", backgroundColor: "#f8f8f8ff", paddingVertical: 8, borderRadius: 12, marginHorizontal: 1 },
   levelStatBox: { flex: 1.5, paddingHorizontal: 4 },
   statLabel: { fontSize: 12, color: "#666", fontWeight: "600" },
-  statValue: { fontSize: 14, fontWeight: "800", color: "#333" },
+  statValue: { fontSize: 12, fontWeight: "800", color: "#333" },
   coinDisplay: { flexDirection: "row", alignItems: "center", gap: 2 },
   coinEmoji: { fontSize: 12 },
   newGameText: { fontSize: 14, fontWeight: "bold", color: "#ffdd35ff" },

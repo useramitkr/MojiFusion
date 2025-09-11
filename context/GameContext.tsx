@@ -42,6 +42,7 @@ type GameContextType = {
   toggleMusic: () => void;
   playSound: (type: 'move' | 'merge' | 'switch' | 'success' | 'unlock' | 'swipe' | 'boom' | 'coin' | 'error') => void;
   useSwitcher: () => void;
+  resumeWithSwitcher: () => void;
   addCoins: (amount: number) => void;
   spendCoins: (amount: number) => boolean;
   dismissTutorial: () => void;
@@ -211,15 +212,34 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
   }, [coins, unlockedThemes, playSound, spendCoins]);
 
   const checkGameOver = useCallback((currentBoard: number[][]) => {
+    // 1. Check for any empty cells
     const isFull = currentBoard.every(row => row.every(cell => cell !== 0));
-    if (!isFull) return false;
+    if (!isFull) {
+      return false;
+    }
+
+    // 2. Check for possible merges (horizontally and vertically)
     for (let i = 0; i < 4; i++) {
         for (let j = 0; j < 4; j++) {
             const current = currentBoard[i][j];
-            if (j < 3 && (current === currentBoard[i][j + 1] || current < 0 || currentBoard[i][j+1] < 0)) return false;
-            if (i < 3 && (current === currentBoard[i + 1][j] || current < 0 || currentBoard[i+1][j] < 0)) return false;
+
+            // Check right neighbor
+            if (j < 3) {
+                const right = currentBoard[i][j + 1];
+                if (current > 0 && current === right) return false; // Same number tiles can merge
+                if (current < 0 && right < 0) return false; // Two special tiles can merge
+            }
+            
+            // Check bottom neighbor
+            if (i < 3) {
+                const bottom = currentBoard[i + 1][j];
+                if (current > 0 && current === bottom) return false; // Same number tiles can merge
+                if (current < 0 && bottom < 0) return false; // Two special tiles can merge
+            }
         }
     }
+
+    // 3. If board is full and no merges are possible, game is over.
     return true;
   }, []);
   
@@ -275,9 +295,14 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
                 AsyncStorage.setItem("bestTile", String(maxTileValue));
             }
         }
-    }
-    if (checkGameOver(newBoard)) {
-        setIsGameOver(true);
+
+        if (checkGameOver(newBoard)) {
+            setIsGameOver(true);
+        }
+    } else {
+        if (checkGameOver(newBoard)) {
+            setIsGameOver(true);
+        }
     }
   }, [board, score, bestScore, bestTile, isGameOver, levelUp, level, nextLevelScore, checkGameOver, playSound, router, addCoins]);
 
@@ -350,6 +375,13 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
     });
     playSound('switch');
   }, [board, switcherCount, playSound]);
+
+  const resumeWithSwitcher = useCallback(() => {
+    if (switcherCount > 0) {
+      setIsGameOver(false);
+      useSwitcher();
+    }
+  }, [switcherCount, useSwitcher]);
   
   const handleSetTheme = useCallback((newTheme: string) => {
     if (typeof newTheme === 'string' && newTheme.trim().length > 0) {
@@ -367,10 +399,11 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
         animatingTiles, unlockedThemes, level, nextLevelScore, progress, levelUp,
         floatingAnimations, newGame, move, setTheme: handleSetTheme, switchTile, toggleSound,
         toggleMusic, playSound, useSwitcher, addCoins, spendCoins, dismissTutorial,
-        restartGame, buyTheme, nextLevel, removeFloatingAnimation
+        restartGame, buyTheme, nextLevel, removeFloatingAnimation, resumeWithSwitcher
       }}
     >
       {children}
     </GameContext.Provider>
   );
 };
+

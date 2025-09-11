@@ -44,7 +44,8 @@ export default function HomeScreen() {
     newGame,
     levelUp,
     nextLevel,
-    level
+    level,
+    resumeWithSwitcher,
   } = useGame();
 
   if (levelUp) {
@@ -66,7 +67,12 @@ export default function HomeScreen() {
       <Header />
       <SwipeableBoard />
       <Tutorial visible={showTutorial} onComplete={dismissTutorial}/>
-      <GameOverModal visible={isGameOver} onRestart={restartGame} onNewGame={newGame}/>
+      <GameOverModal 
+        visible={isGameOver} 
+        onRestart={restartGame} 
+        onNewGame={newGame}
+        onResumeWithSwitcher={resumeWithSwitcher}
+      />
     </View>
   );
 }
@@ -80,4 +86,3 @@ const styles = StyleSheet.create({
   nextLevelButton: { backgroundColor: '#FF6B35', paddingVertical: 15, paddingHorizontal: 30, borderRadius: 15 },
   nextLevelButtonText: { color: 'white', fontSize: 18, fontWeight: 'bold' },
 });
-
