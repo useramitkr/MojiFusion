@@ -87,7 +87,7 @@ export default function Header() {
               onPress={useSwitcher}
               disabled={switcherCount <= 0}
             >
-              <Animated.View style={{ transform: [{ scale: switcherPop }] }}>
+              <Animated.View style={{ transform: [{ scale: switcherPop }], backgroundColor: switcherCount > 0 ? "#FF6B35" : "#ccc", borderRadius: 12, paddingHorizontal: 8, paddingVertical: 3 }}>
                 <Text style={styles.actionText}>🔑 {switcherCount}</Text>
               </Animated.View>
             </TouchableOpacity>
@@ -149,8 +149,8 @@ const styles = StyleSheet.create({
   topRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
   title: { fontSize: 24, fontWeight: "900", color: "#ffdd35ff" },
   controls: { flexDirection: "row", alignItems: "center", gap: 8 },
-  controlBtn: { width: 32, height: 32, backgroundColor: "#f0f0f0", borderRadius: 16, justifyContent: "center", alignItems: "center" },
-  controlIcon: { fontSize: 16 },
+  controlBtn: { width: 22, height: 22, backgroundColor: "#f0f0f0", borderRadius: 16, justifyContent: "center", alignItems: "center" },
+  controlIcon: { fontSize: 12 },
   statsRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 12, gap: 4 },
   statBox: { flex: 1, alignItems: "center", backgroundColor: "#f8f8f8ff", paddingVertical: 8, borderRadius: 12, marginHorizontal: 1 },
   levelStatBox: { flex: 1.5, paddingHorizontal: 4 },
@@ -173,6 +173,6 @@ const styles = StyleSheet.create({
   progressText: { fontSize: 10, color: '#666' },
   actionBtn: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 12, alignItems: "center" },
   activeBtn: {},
-  actionText: { fontSize: 14, fontWeight: "bold", color: "#000000" },
+  actionText: { fontSize: 14, fontWeight: "bold", color: "#fff" },
 });
 
