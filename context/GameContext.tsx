@@ -1,10 +1,10 @@
-import { initBoard, moveBoard } from "@/game/engine";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { initBoard, moveBoard } from "@/game/engine";
+import { THEME_DATA } from "@/game/themes";
+import { loadLevelData, saveLevelData } from "@/utils/gameLevel";
 import { Audio } from 'expo-av';
 import { useRouter } from "expo-router";
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
-import { THEME_DATA } from "@/game/themes";
-import { loadLevelData, saveLevelData } from "@/utils/gameLevel";
 
 type GameContextType = {
   board: number[][];
@@ -46,7 +46,7 @@ const GameContext = createContext<GameContextType | null>(null);
 
 export const useGame = () => {
   const ctx = useContext(GameContext);
-  if (!ctx) throw new Error("useGame must be used inside GameProvider");
+  if (!ctx) throw new Error("useGame must be used within a GameProvider");
   return ctx;
 };
 
@@ -67,7 +67,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
   const [isGameOver, setIsGameOver] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
   const [animatingTiles, setAnimatingTiles] = useState<Set<string>>(new Set());
-  const [unlockedThemes, setUnlockedThemes] = useState<string[]>(['fruits']);
+  const [unlockedThemes, setUnlockedThemes] = useState<string[]>([]);
   const [level, setLevel] = useState(1);
   const [nextLevelScore, setNextLevelScore] = useState(200);
   const [progress, setProgress] = useState(0);
@@ -288,7 +288,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
             setProgress(finalProgress);
             await saveLevelData({ level, nextLevelScore, progress: finalProgress });
             playSound('success');
-            router.push('/(tabs)/');
+            router.push('/(tabs)');
         } else {
             setBoard(newBoard);
             setScore(newScore);
