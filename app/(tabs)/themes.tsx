@@ -50,7 +50,7 @@ export default function ThemesScreen() {
           <Text style={styles.subtitle}>Best Score: {bestScore.toLocaleString()} pts</Text>
           <View style={styles.coinDisplay}>
             <Text style={styles.coinEmoji}>🪙</Text>
-            <Text style={styles.subtitle}>{coins.toLocaleString()}</Text>
+            <Text style={styles.subtitle2}>{coins.toLocaleString()}</Text>
           </View>
         </View>
       </View>
@@ -162,15 +162,20 @@ const styles = StyleSheet.create({
     color: "#666",
     fontWeight: "600",
   },
+  subtitle2: {
+    fontSize: 16,
+    color: "#ffffff",
+    fontWeight: "600",
+  },
   coinDisplay: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFD700',
+    backgroundColor: '#FF6B35',
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#FFA500',
+    borderColor: '#FF6B35',
   },
   coinEmoji: {
     fontSize: 16,
@@ -265,7 +270,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   buyButton: {
-    backgroundColor: '#FFD700',
+    backgroundColor: '#FF6B35',
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 12,
@@ -273,7 +278,7 @@ const styles = StyleSheet.create({
   buyText: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#ffffff',
   },
 });
 
