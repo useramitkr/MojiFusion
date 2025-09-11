@@ -1,89 +1,32 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Platform } from 'react-native';
-import {
-  RewardedAd as AdmobRewardedAd,
-  RewardedAdEventType,
-  TestIds,
-} from 'react-native-google-mobile-ads';
+import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { useGame } from '@/context/GameContext';
 
-const androidAdmobRewarded = "ca-app-pub-3010808812913571/2397042944";
-const iosAdmobRewarded = "ca-app-pub-12345678910/12345678910"; // Placeholder for iOS
-
-const adUnitId = __DEV__
-  ? TestIds.REWARDED
-  : Platform.OS === 'ios'
-  ? iosAdmobRewarded
-  : androidAdmobRewarded;
-
 const RewardButtons = () => {
-  const { addKey, addCoins } = useGame();
-  const [loadingAdFor, setLoadingAdFor] = useState<'key' | 'coins' | null>(null);
-
-  const loadAndShowAd = (onEarned: () => void, adType: 'key' | 'coins') => {
-    setLoadingAdFor(adType);
-    const rewardedAd = AdmobRewardedAd.createForAdRequest(adUnitId, {
-      requestNonPersonalizedAdsOnly: true,
-    });
-
-    const unsubscribeLoaded = rewardedAd.addAdEventListener(RewardedAdEventType.LOADED, () => {
-      rewardedAd.show();
-    });
-    
-    const unsubscribeEarned = rewardedAd.addAdEventListener(
-      RewardedAdEventType.EARNED_REWARD,
-      reward => {
-        console.log('User earned reward of ', reward);
-        onEarned();
-      },
-    );
-    
-    const unsubscribeClosed = rewardedAd.addAdEventListener(
-        RewardedAdEventType.CLOSED,
-        () => {
-            setLoadingAdFor(null);
-        }
-    )
-
-    const unsubscribeError = rewardedAd.addAdEventListener(
-      'ad-event',
-      (event) => {
-        if (event.type === 'error') {
-          console.error('Ad failed to load', event.payload);
-          setLoadingAdFor(null);
-        }
-      }
-    )
-
-    rewardedAd.load();
-
-    return () => {
-      unsubscribeLoaded();
-      unsubscribeEarned();
-      unsubscribeClosed();
-      unsubscribeError();
-    };
-  };
+  // Use the new showRewardedAd function and loading state from the context
+  const { addKey, addCoins, showRewardedAd, rewardedAdLoadingFor } = useGame();
 
   const handleGetExtraKey = () => {
-    loadAndShowAd(() => {
+    // Call the context function to show an ad for a key
+    showRewardedAd(() => {
       addKey();
     }, 'key');
   };
 
   const handleGetExtraCoins = () => {
-    loadAndShowAd(() => {
+    // Call the context function to show an ad for coins
+    showRewardedAd(() => {
       addCoins(180);
     }, 'coins');
   };
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity style={styles.button} onPress={handleGetExtraKey} disabled={!!loadingAdFor}>
-        {loadingAdFor === 'key' ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>🔑 Get Extra Key</Text>}
+      <TouchableOpacity style={styles.button} onPress={handleGetExtraKey} disabled={!!rewardedAdLoadingFor}>
+        {rewardedAdLoadingFor === 'key' ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>🔑 Get Extra Key</Text>}
       </TouchableOpacity>
-      <TouchableOpacity style={styles.button} onPress={handleGetExtraCoins} disabled={!!loadingAdFor}>
-        {loadingAdFor === 'coins' ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>🪙 Get 180 Coins</Text>}
+      <TouchableOpacity style={styles.button} onPress={handleGetExtraCoins} disabled={!!rewardedAdLoadingFor}>
+        {rewardedAdLoadingFor === 'coins' ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>🪙 Get 180 Coins</Text>}
       </TouchableOpacity>
     </View>
   );
@@ -121,4 +64,3 @@ const styles = StyleSheet.create({
 });
 
 export default RewardButtons;
-

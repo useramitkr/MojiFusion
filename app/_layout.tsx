@@ -7,11 +7,11 @@ import mobileAds from 'react-native-google-mobile-ads';
 export default function RootLayout() {
 
   // Initialize Google Mobile Ads SDK
-  // useEffect(() => {
-  //   (async () => {
-  //     await mobileAds().initialize();
-  //   })();
-  // }, [])
+  useEffect(() => {
+    (async () => {
+      await mobileAds().initialize();
+    })();
+  }, [])
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

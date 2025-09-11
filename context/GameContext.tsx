@@ -6,6 +6,15 @@ import { saveGameState, loadGameState } from "@/utils/gameState";
 import { Audio } from 'expo-av';
 import { useRouter } from "expo-router";
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+// --- REWARDED AD: Import necessary modules ---
+// We import Platform to check the OS and modules from react-native-google-mobile-ads.
+import { Platform } from 'react-native';
+import {
+  RewardedAd as AdmobRewardedAd,
+  RewardedAdEventType,
+  TestIds,
+} from 'react-native-google-mobile-ads';
+// --- END REWARDED AD ---
 
 type FloatingAnimationType = {
   id: string;
@@ -13,6 +22,18 @@ type FloatingAnimationType = {
   amount?: number;
   position: { row: number; col: number };
 };
+
+// --- REWARDED AD: Define Ad Unit IDs ---
+// This is where we define the ad unit IDs for rewarded video ads.
+// We use test IDs during development to avoid policy violations with AdMob.
+const androidAdmobRewarded = "ca-app-pub-3010808812913571/3837625774";
+const iosAdmobRewarded = "ca-app-pub-12345678910/12345678910"; // Placeholder for iOS
+const rewardedAdUnitId = __DEV__
+  ? TestIds.REWARDED
+  : Platform.OS === 'ios'
+    ? iosAdmobRewarded
+    : androidAdmobRewarded;
+// --- END REWARDED AD ---
 
 type GameContextType = {
   board: number[][];
@@ -35,6 +56,11 @@ type GameContextType = {
   progress: number;
   levelUp: boolean;
   floatingAnimations: FloatingAnimationType[];
+  // --- REWARDED AD: Add to context type ---
+  // We expose the ad loading state and the function to show an ad.
+  showRewardedAd: (onEarned: () => void, adType: 'key' | 'coins') => void;
+  rewardedAdLoadingFor: 'key' | 'coins' | null;
+  // --- END REWARDED AD ---
   newGame: () => void;
   move: (direction: "up" | "down" | "left" | "right") => void;
   setTheme: (theme: string) => void;
@@ -85,6 +111,10 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
   const [progress, setProgress] = useState(0);
   const [levelUp, setLevelUp] = useState(false);
   const [floatingAnimations, setFloatingAnimations] = useState<FloatingAnimationType[]>([]);
+  // --- REWARDED AD: State for loading status ---
+  // This state tracks which type of reward ad is currently loading ('key' or 'coins').
+  const [rewardedAdLoadingFor, setRewardedAdLoadingFor] = useState<'key' | 'coins' | null>(null);
+  // --- END REWARDED AD ---
   const backgroundMusicRef = useRef<Audio.Sound | null>(null);
   const soundsRef = useRef<Record<string, Audio.Sound>>({});
   const lastMoveTimeRef = useRef(0);
@@ -141,7 +171,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
           AsyncStorage.getItem("coins"), AsyncStorage.getItem("soundEnabled"), AsyncStorage.getItem("musicEnabled"), AsyncStorage.getItem("isFirstTime"),
           AsyncStorage.getItem("unlockedThemes"), AsyncStorage.getItem("theme"),
         ]);
-        
+
         if (bestScoreStr) setBestScore(Number(bestScoreStr));
         if (bestTileStr) setBestTile(Number(bestTileStr));
         if (switcherStr) setSwitcherCount(Number(switcherStr));
@@ -163,6 +193,56 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
     };
     loadStoredData();
   }, []);
+
+  // --- REWARDED AD: Function to load and show ad ---
+  // This function is now centralized in the context to be used anywhere in the app.
+  const showRewardedAd = useCallback((onEarned: () => void, adType: 'key' | 'coins') => {
+    // Prevent multiple ads from loading simultaneously
+    if (rewardedAdLoadingFor) {
+      return;
+    }
+    setRewardedAdLoadingFor(adType);
+
+    const rewardedAd = AdmobRewardedAd.createForAdRequest(rewardedAdUnitId, {
+      requestNonPersonalizedAdsOnly: true,
+    });
+
+    const unsubscribeLoaded = rewardedAd.addAdEventListener(RewardedAdEventType.LOADED, () => {
+      rewardedAd.show();
+    });
+
+    const unsubscribeEarned = rewardedAd.addAdEventListener(
+      RewardedAdEventType.EARNED_REWARD,
+      reward => {
+        console.log('User earned reward of ', reward);
+        onEarned(); // Grant the reward
+      },
+    );
+
+    const unsubscribeClosed = rewardedAd.addAdEventListener(
+      RewardedAdEventType.CLOSED,
+      () => {
+        setRewardedAdLoadingFor(null); // Reset loading state
+      }
+    )
+
+    const unsubscribeError = rewardedAd.addAdEventListener(
+      'ad-event',
+      (event) => {
+        if (event.type === 'error' || event.type === RewardedAdEventType.FAILED_TO_LOAD) {
+          console.error('Ad failed to load or show', event.payload);
+          setRewardedAdLoadingFor(null); // Reset loading state on error
+        }
+      }
+    )
+
+    // Start loading the ad
+    rewardedAd.load();
+
+    // The library handles listener cleanup implicitly when the ad is closed or fails.
+    // For this use case, we don't need to return and call the unsubscribe functions manually.
+  }, [rewardedAdLoadingFor]);
+  // --- END REWARDED AD ---
 
   const playSound = useCallback(async (type: 'move' | 'merge' | 'switch' | 'success' | 'unlock' | 'swipe' | 'boom' | 'coin' | 'error') => {
     if (!soundEnabled) return;
@@ -193,10 +273,10 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
       return newCoins;
     });
     if (amount > 0) {
-        playSound('coin');
+      playSound('coin');
     }
   }, [playSound]);
-  
+
   const addKey = useCallback(() => {
     setSwitcherCount(prev => {
       const newCount = prev + 1;
@@ -217,7 +297,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
     }
     return false;
   }, [coins]);
-  
+
   const buyTheme = useCallback((themeId: string): boolean => {
     const themeData = THEME_DATA.find(t => t.id === themeId);
     if (!themeData || unlockedThemes.includes(themeId)) return false;
@@ -243,21 +323,21 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     for (let i = 0; i < 4; i++) {
-        for (let j = 0; j < 4; j++) {
-            const current = currentBoard[i][j];
-            if (j < 3) {
-                const right = currentBoard[i][j + 1];
-                if ((current > 0 && current === right) || (current < 0 && right < 0)) return false; 
-            }
-            if (i < 3) {
-                const bottom = currentBoard[i + 1][j];
-                if ((current > 0 && current === bottom) || (current < 0 && bottom < 0)) return false; 
-            }
+      for (let j = 0; j < 4; j++) {
+        const current = currentBoard[i][j];
+        if (j < 3) {
+          const right = currentBoard[i][j + 1];
+          if ((current > 0 && current === right) || (current < 0 && right < 0)) return false;
         }
+        if (i < 3) {
+          const bottom = currentBoard[i + 1][j];
+          if ((current > 0 && current === bottom) || (current < 0 && bottom < 0)) return false;
+        }
+      }
     }
     return true;
   }, []);
-  
+
   const move = useCallback(async (direction: "up" | "down" | "left" | "right") => {
     const now = Date.now();
     if (now - lastMoveTimeRef.current < 100 || isGameOver || levelUp) return;
@@ -270,70 +350,70 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
     if (newAnimations && newAnimations.length > 0) setFloatingAnimations(prev => [...prev, ...newAnimations]);
 
     if (gained > 0 || boardChanged) {
-        if (gained > 0) playSound('merge');
+      if (gained > 0) playSound('merge');
 
-        if (specialEffects && specialEffects.length > 0) {
-            for (const effect of specialEffects) {
-                if (effect.type === 'special_merge' && (effect.tile1 === SPECIAL_TILES.REWARD || effect.tile2 === SPECIAL_TILES.REWARD)) {
-                    setSwitcherCount(prev => {
-                        const newCount = prev + 1;
-                        AsyncStorage.setItem("switcherCount", String(newCount));
-                        return newCount;
-                    });
-                    playSound('unlock');
-                }
-            }
+      if (specialEffects && specialEffects.length > 0) {
+        for (const effect of specialEffects) {
+          if (effect.type === 'special_merge' && (effect.tile1 === SPECIAL_TILES.REWARD || effect.tile2 === SPECIAL_TILES.REWARD)) {
+            setSwitcherCount(prev => {
+              const newCount = prev + 1;
+              AsyncStorage.setItem("switcherCount", String(newCount));
+              return newCount;
+            });
+            playSound('unlock');
+          }
         }
-        
-        const oldScore = score;
-        const newScore = oldScore + gained;
-        const newTotalProgress = progress + gained;
-        
-        const coinsFromScore = Math.floor(newScore / 10) - Math.floor(oldScore / 10);
-        const totalCoinsGained = specialCoins + coinsFromScore;
-        if (totalCoinsGained > 0) {
-          addCoins(totalCoinsGained);
-        }
+      }
 
-        // Check if player has reached the next level
-        if (newTotalProgress >= nextLevelScore) {
-            setLevelUp(true);
-            const finalProgress = newTotalProgress;
-            setScore(newScore);
-            setProgress(finalProgress);
-            // Save both game state and user progress
-            await saveGameState({ board: newBoard, score: newScore });
-            await saveUserProgress({ level, nextLevelScore, progress: finalProgress });
-            playSound('success');
-            router.push('/(tabs)');
-        } else {
-            // Normal gameplay - update everything
-            setBoard(newBoard);
-            setScore(newScore);
-            setProgress(newTotalProgress);
-            
-            // Save both game state and user progress
-            await saveGameState({ board: newBoard, score: newScore });
-            await saveUserProgress({ level, nextLevelScore, progress: newTotalProgress });
-            
-            if (newScore > bestScore) {
-                setBestScore(newScore);
-                AsyncStorage.setItem("bestScore", String(newScore));
-            }
-            const maxTileValue = Math.max(...newBoard.flat().filter(val => val > 0));
-            if (maxTileValue > bestTile) {
-                setBestTile(maxTileValue);
-                AsyncStorage.setItem("bestTile", String(maxTileValue));
-            }
-        }
+      const oldScore = score;
+      const newScore = oldScore + gained;
+      const newTotalProgress = progress + gained;
 
-        if (checkGameOver(newBoard)) {
-            setIsGameOver(true);
+      const coinsFromScore = Math.floor(newScore / 10) - Math.floor(oldScore / 10);
+      const totalCoinsGained = specialCoins + coinsFromScore;
+      if (totalCoinsGained > 0) {
+        addCoins(totalCoinsGained);
+      }
+
+      // Check if player has reached the next level
+      if (newTotalProgress >= nextLevelScore) {
+        setLevelUp(true);
+        const finalProgress = newTotalProgress;
+        setScore(newScore);
+        setProgress(finalProgress);
+        // Save both game state and user progress
+        await saveGameState({ board: newBoard, score: newScore });
+        await saveUserProgress({ level, nextLevelScore, progress: finalProgress });
+        playSound('success');
+        router.push('/(tabs)');
+      } else {
+        // Normal gameplay - update everything
+        setBoard(newBoard);
+        setScore(newScore);
+        setProgress(newTotalProgress);
+
+        // Save both game state and user progress
+        await saveGameState({ board: newBoard, score: newScore });
+        await saveUserProgress({ level, nextLevelScore, progress: newTotalProgress });
+
+        if (newScore > bestScore) {
+          setBestScore(newScore);
+          AsyncStorage.setItem("bestScore", String(newScore));
         }
+        const maxTileValue = Math.max(...newBoard.flat().filter(val => val > 0));
+        if (maxTileValue > bestTile) {
+          setBestTile(maxTileValue);
+          AsyncStorage.setItem("bestTile", String(maxTileValue));
+        }
+      }
+
+      if (checkGameOver(newBoard)) {
+        setIsGameOver(true);
+      }
     } else {
-        if (checkGameOver(board)) {
-            setIsGameOver(true);
-        }
+      if (checkGameOver(board)) {
+        setIsGameOver(true);
+      }
     }
   }, [board, score, progress, bestScore, bestTile, isGameOver, levelUp, level, nextLevelScore, checkGameOver, playSound, router, addCoins]);
 
@@ -347,10 +427,10 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
     setBoard(newBoard);
     setScore(0); // Reset current game score
     setIsGameOver(false);
-    
+
     // Save only the game state (board and current score), NOT the user progress
     await saveGameState({ board: newBoard, score: 0 });
-    
+
     playSound('success');
   }, [playSound]);
 
@@ -358,14 +438,14 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
     const newLevel = level + 1;
     const newNextLevelScore = 200 * newLevel;
     const newBoard = initBoard();
-    
+
     setLevel(newLevel);
     setNextLevelScore(newNextLevelScore);
     setScore(0);
     setProgress(0); // Reset progress for the new level
     setLevelUp(false);
     setBoard(newBoard);
-    
+
     // Save both user progress (with new level) and game state (fresh board)
     await saveUserProgress({ level: newLevel, nextLevelScore: newNextLevelScore, progress: 0 });
     await saveGameState({ board: newBoard, score: 0 });
@@ -376,7 +456,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
     setIsGameOver(false);
     setScore(0);
     setBoard(newBoard);
-    
+
     // Save the game state but keep user progress intact
     await saveGameState({ board: newBoard, score: 0 });
   }, []);
@@ -430,7 +510,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
       useSwitcher();
     }
   }, [switcherCount, useSwitcher]);
-  
+
   const handleSetTheme = useCallback((newTheme: string) => {
     if (typeof newTheme === 'string' && newTheme.trim().length > 0) {
       setTheme(newTheme);
@@ -445,7 +525,12 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
         board, score, bestScore, bestTile, theme, switcherCount, undoCount, coins,
         soundEnabled, musicEnabled, isFirstTime, isGameOver, showTutorial,
         animatingTiles, unlockedThemes, level, nextLevelScore, progress, levelUp,
-        floatingAnimations, newGame, move, setTheme: handleSetTheme, switchTile, toggleSound,
+        floatingAnimations,
+        // --- REWARDED AD: Expose via context provider ---
+        showRewardedAd,
+        rewardedAdLoadingFor,
+        // --- END REWARDED AD ---
+        newGame, move, setTheme: handleSetTheme, switchTile, toggleSound,
         toggleMusic, playSound, useSwitcher, addCoins, spendCoins, dismissTutorial,
         restartGame, buyTheme, nextLevel, removeFloatingAnimation, resumeWithSwitcher, addKey
       }}
