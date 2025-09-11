@@ -63,11 +63,11 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <ImageBackground source={require('@/assets/images/gamebg.png')} style={styles.backgroundImage}/>
+      <ImageBackground source={require('@/assets/images/lavabg.png')} style={styles.backgroundImage}/>
       {emojis.map((emoji, index) => (<AnimatedEmoji key={index} emoji={emoji} yRange={[-50, screenHeight]}/>))}
 
       {/* Banner Ad  */}
-      <InlineAd />
+      {/* <InlineAd /> */}
       <Header />
       <SwipeableBoard />
       <Tutorial visible={showTutorial} onComplete={dismissTutorial}/>
