@@ -139,6 +139,19 @@ export const themes: Record<string, Record<number, string>> = {
     1024: "👴🏼",
     2048: "🪦",
   },
+  numbers: {
+    2: "2",
+    4: "4",
+    8: "8",
+    16: "16",
+    32: "32",
+    64: "64",
+    128: "128",
+    256: "256",
+    512: "512",
+    1024: "1024",
+    2048: "2048",
+  },
 };
 
 export const THEME_DATA = [
@@ -204,6 +217,15 @@ export const THEME_DATA = [
     requiredCoins: 300, 
     category: "Activities", 
     preview: ["⚽", "🏀", "🎾", "🏈"] 
+  },
+  { 
+    id: "numbers", 
+    name: "Numbers", 
+    icon: "🔢", 
+    requiredScore: 100, 
+    requiredCoins: 100, 
+    category: "Activities", 
+    preview: ["1", "2", "3", "4"] 
   },
   { 
     id: "space", 
