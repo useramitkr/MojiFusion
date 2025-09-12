@@ -6,15 +6,6 @@ import { saveGameState, loadGameState } from "@/utils/gameState";
 import { Audio } from 'expo-av';
 import { useRouter } from "expo-router";
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
-// --- REWARDED AD: Import necessary modules ---
-// We import Platform to check the OS and modules from react-native-google-mobile-ads.
-import { Platform } from 'react-native';
-import {
-  RewardedAd as AdmobRewardedAd,
-  RewardedAdEventType,
-  TestIds,
-} from 'react-native-google-mobile-ads';
-// --- END REWARDED AD ---
 
 type FloatingAnimationType = {
   id: string;
@@ -22,18 +13,6 @@ type FloatingAnimationType = {
   amount?: number;
   position: { row: number; col: number };
 };
-
-// --- REWARDED AD: Define Ad Unit IDs ---
-// This is where we define the ad unit IDs for rewarded video ads.
-// We use test IDs during development to avoid policy violations with AdMob.
-const androidAdmobRewarded = "ca-app-pub-3010808812913571/3837625774";
-const iosAdmobRewarded = "ca-app-pub-12345678910/12345678910"; // Placeholder for iOS
-const rewardedAdUnitId = __DEV__
-  ? TestIds.REWARDED
-  : Platform.OS === 'ios'
-    ? iosAdmobRewarded
-    : androidAdmobRewarded;
-// --- END REWARDED AD ---
 
 type GameContextType = {
   board: number[][];
@@ -56,11 +35,6 @@ type GameContextType = {
   progress: number;
   levelUp: boolean;
   floatingAnimations: FloatingAnimationType[];
-  // --- REWARDED AD: Add to context type ---
-  // We expose the ad loading state and the function to show an ad.
-  showRewardedAd: (onEarned: () => void, adType: 'key' | 'coins') => void;
-  rewardedAdLoadingFor: 'key' | 'coins' | null;
-  // --- END REWARDED AD ---
   newGame: () => void;
   move: (direction: "up" | "down" | "left" | "right") => void;
   setTheme: (theme: string) => void;
@@ -111,10 +85,6 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
   const [progress, setProgress] = useState(0);
   const [levelUp, setLevelUp] = useState(false);
   const [floatingAnimations, setFloatingAnimations] = useState<FloatingAnimationType[]>([]);
-  // --- REWARDED AD: State for loading status ---
-  // This state tracks which type of reward ad is currently loading ('key' or 'coins').
-  const [rewardedAdLoadingFor, setRewardedAdLoadingFor] = useState<'key' | 'coins' | null>(null);
-  // --- END REWARDED AD ---
   const backgroundMusicRef = useRef<Audio.Sound | null>(null);
   const soundsRef = useRef<Record<string, Audio.Sound>>({});
   const lastMoveTimeRef = useRef(0);
@@ -194,55 +164,6 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
     loadStoredData();
   }, []);
 
-  // --- REWARDED AD: Function to load and show ad ---
-  // This function is now centralized in the context to be used anywhere in the app.
-  const showRewardedAd = useCallback((onEarned: () => void, adType: 'key' | 'coins') => {
-    // Prevent multiple ads from loading simultaneously
-    if (rewardedAdLoadingFor) {
-      return;
-    }
-    setRewardedAdLoadingFor(adType);
-
-    const rewardedAd = AdmobRewardedAd.createForAdRequest(rewardedAdUnitId, {
-      requestNonPersonalizedAdsOnly: true,
-    });
-
-    const unsubscribeLoaded = rewardedAd.addAdEventListener(RewardedAdEventType.LOADED, () => {
-      rewardedAd.show();
-    });
-
-    const unsubscribeEarned = rewardedAd.addAdEventListener(
-      RewardedAdEventType.EARNED_REWARD,
-      reward => {
-        console.log('User earned reward of ', reward);
-        onEarned(); // Grant the reward
-      },
-    );
-
-    const unsubscribeClosed = rewardedAd.addAdEventListener(
-      RewardedAdEventType.CLOSED,
-      () => {
-        setRewardedAdLoadingFor(null); // Reset loading state
-      }
-    )
-
-    const unsubscribeError = rewardedAd.addAdEventListener(
-      'ad-event',
-      (event) => {
-        if (event.type === 'error' || event.type === RewardedAdEventType.FAILED_TO_LOAD) {
-          console.error('Ad failed to load or show', event.payload);
-          setRewardedAdLoadingFor(null); // Reset loading state on error
-        }
-      }
-    )
-
-    // Start loading the ad
-    rewardedAd.load();
-
-    // The library handles listener cleanup implicitly when the ad is closed or fails.
-    // For this use case, we don't need to return and call the unsubscribe functions manually.
-  }, [rewardedAdLoadingFor]);
-  // --- END REWARDED AD ---
 
   const playSound = useCallback(async (type: 'move' | 'merge' | 'switch' | 'success' | 'unlock' | 'swipe' | 'boom' | 'coin' | 'error') => {
     if (!soundEnabled) return;
@@ -526,10 +447,6 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
         soundEnabled, musicEnabled, isFirstTime, isGameOver, showTutorial,
         animatingTiles, unlockedThemes, level, nextLevelScore, progress, levelUp,
         floatingAnimations,
-        // --- REWARDED AD: Expose via context provider ---
-        showRewardedAd,
-        rewardedAdLoadingFor,
-        // --- END REWARDED AD ---
         newGame, move, setTheme: handleSetTheme, switchTile, toggleSound,
         toggleMusic, playSound, useSwitcher, addCoins, spendCoins, dismissTutorial,
         restartGame, buyTheme, nextLevel, removeFloatingAnimation, resumeWithSwitcher, addKey

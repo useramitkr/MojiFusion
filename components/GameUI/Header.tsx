@@ -140,7 +140,6 @@ export default function Header() {
             </View>
           </TouchableOpacity>
         </Modal>
-        <InlineAd />
       </View>
     </>
   );

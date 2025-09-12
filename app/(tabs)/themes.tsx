@@ -5,7 +5,6 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from "rea
 import { ThemedView } from "@/components/ThemedView";
 import Legal from "@/components/GameUI/legal";
 import { THEME_DATA, CATEGORIES } from "@/game/themes";
-import RewardButtons from "@/components/GameUI/RewardButtons";
 
 export default function ThemesScreen() {
   const { theme, setTheme, bestScore, coins, unlockedThemes, buyTheme, playSound } = useGame();
@@ -54,7 +53,6 @@ export default function ThemesScreen() {
             <Text style={styles.subtitle2}>{coins.toLocaleString()}</Text>
           </View>
         </View>
-        <RewardButtons />
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>

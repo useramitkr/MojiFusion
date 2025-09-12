@@ -6,6 +6,7 @@ import SwipeableBoard from "@/components/GameUI/SwipeableBoard";
 import { useGame } from "@/context/GameContext";
 import Tutorial from "@/components/GameUI/Tutorial";
 import { AVAILABLE_BACKGROUNDS, BACKGROUND_CONFIG, getRandomBackgroundIndex } from "@/utils/backgroundManager";
+import InlineAd from "@/components/AdmobAd/InlineAd";
 
 const { height: screenHeight, width: screenWidth } = Dimensions.get('window');
 
@@ -112,7 +113,8 @@ export default function HomeScreen() {
       {emojis.map((emoji, index) => (
         <AnimatedEmoji key={index} emoji={emoji} yRange={[-50, screenHeight]}/>
       ))}
-
+      {/* Banner Ads  */}
+      <InlineAd />
       <Header />
       <SwipeableBoard />
       <Tutorial visible={showTutorial} onComplete={dismissTutorial}/>
